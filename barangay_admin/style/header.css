@@ -1,0 +1,170 @@
+/* ---------------- TOPBAR ---------------- */
+.topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: #ffffff;
+    padding: 0 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    z-index: 1000;
+}
+
+/* Logo area */
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.topbar .logo1 {
+    height: 45px;
+}
+
+.user-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+/* Right side */
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    position: relative;
+}
+
+.clock {
+    font-size: 14px;
+    color: #64748b;
+}
+
+/* Responsive */
+@media(max-width:1024px){
+    .topbar { padding: 0 15px; }
+    .user-title { font-size: 14px; }
+}
+@media(max-width:600px){
+    .topbar { padding: 0 10px; }
+    .user-title { font-size: 12px; }
+    .clock { font-size: 12px; }
+}
+/* ---------------- NOTIFICATION ---------------- */
+
+/* Notification icon (bell) */
+.notif-icon {
+    position: relative;
+    cursor: pointer;
+    font-size: 20px;
+    color: #1e293b;
+}
+
+.notif-count {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ef4444; /* red */
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 6px;
+    border-radius: 50%;
+}
+
+/* Notification panel */
+.notif-panel {
+    position: absolute;
+    top: 90px;
+    right: 0;
+    width: 350px;
+    max-height: 450px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    overflow-y: auto;
+    display: none;
+    z-index: 10000;
+    padding: 10px 0;
+    font-family: Arial, sans-serif;
+}
+
+/* Notification items */
+.notif-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.2s;
+}
+
+.notif-item:last-child {
+    border-bottom: none;
+}
+
+.notif-item:hover {
+    background-color: #f8fafc;
+}
+
+.notif-item strong {
+    display: block;
+    font-size: 14px;
+    color: #1e293b;
+}
+
+.notif-item p {
+    font-size: 13px;
+    color: #475569;
+    margin: 4px 0 0 0;
+}
+
+.notif-item small {
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+/* No message text */
+.notif-item.no-message {
+    text-align: center;
+    padding: 20px 0;
+    color: #94a3b8;
+}
+
+/* View All Messages link */
+.notif-item a {
+    display: inline-block;
+    margin-top: 5px;
+    font-weight: bold;
+    color: #3f51b5;
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.notif-item a:hover {
+    text-decoration: underline;
+}
+
+/* Scrollbar styling */
+.notif-panel::-webkit-scrollbar {
+    width: 6px;
+}
+.notif-panel::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+.notif-panel::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+/* Responsive */
+@media(max-width:1024px){
+    .notif-panel { width: 300px; top: 90px; }
+}
+@media(max-width:600px){
+    .notif-panel { width: 250px; top: 90px; }
+}

@@ -1,0 +1,208 @@
+/* =========================================================
+   CHATBOT ANALYTICS
+   Page-specific styling
+   ========================================================= */
+
+/* PAGE BACKGROUND */
+body {
+    background: #f5f7fb;
+}
+
+/* =========================================================
+   PAGE TITLE
+   ========================================================= */
+
+.page-title {
+    font-weight: 700;
+    color: #212529;
+}
+
+/* =========================================================
+   STAT CARDS
+   ========================================================= */
+
+.stat-card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 3px 15px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease;
+    height: 100%;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.09);
+}
+
+.stat-card .card-body {
+    padding: 20px;
+}
+
+/* STAT ICON */
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+    border-radius: 12px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 22px;
+}
+
+/* STAT NUMBER */
+
+.stat-card h3 {
+    font-size: 25px;
+    font-weight: 700;
+}
+
+/* =========================================================
+   DASHBOARD CARDS
+   ========================================================= */
+
+.dashboard-card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 3px 15px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+}
+
+/* CARD HEADER */
+
+.dashboard-card .card-header {
+    border-bottom: 1px solid #eef0f3;
+}
+
+.dashboard-card .card-header h5 {
+    font-weight: 600;
+    color: #212529;
+}
+
+/* =========================================================
+   TABLE
+   ========================================================= */
+
+.table {
+    margin-bottom: 0;
+}
+
+.table th {
+    white-space: nowrap;
+    font-weight: 600;
+    color: #495057;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.table-hover tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f8faff;
+}
+
+/* =========================================================
+   FAILED QUESTIONS
+   ========================================================= */
+
+.failed-question {
+    max-width: 500px;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.5;
+}
+
+/* =========================================================
+   BADGES
+   ========================================================= */
+
+.badge {
+    font-weight: 500;
+    padding: 7px 10px;
+    border-radius: 8px;
+}
+
+/* =========================================================
+   EMPTY TABLE STATES
+   ========================================================= */
+
+.table td.text-center {
+    color: #6c757d;
+}
+
+/* =========================================================
+   RESPONSIVE DESIGN
+   ========================================================= */
+
+@media (max-width: 992px) {
+
+    .stat-card .card-body {
+        padding: 17px;
+    }
+
+    .stat-icon {
+        width: 45px;
+        height: 45px;
+        min-width: 45px;
+        font-size: 20px;
+    }
+
+    .stat-card h3 {
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 768px) {
+
+    .main-wrapper {
+        margin-left: 0;
+    }
+
+    .content {
+        padding: 15px;
+    }
+
+    .failed-question {
+        max-width: 100%;
+    }
+
+    .dashboard-card .card-header {
+        padding: 15px;
+    }
+
+    .dashboard-card .card-body {
+        padding: 15px;
+    }
+}
+
+@media (max-width: 576px) {
+
+    .stat-card .card-body {
+        padding: 15px;
+    }
+
+    .stat-icon {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        font-size: 18px;
+    }
+
+    .stat-card h3 {
+        font-size: 20px;
+    }
+
+    .page-title {
+        font-size: 22px;
+    }
+}
+

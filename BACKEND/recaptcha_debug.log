@@ -1,0 +1,286 @@
+[2026-10-04 22:56:43] ========================================
+[2026-10-04 22:56:43] BMS reCAPTCHA LOGIN CHECK STARTED
+[2026-10-04 22:56:43] ========================================
+[2026-10-04 22:56:43] Project ID: barangay_captcha
+[2026-10-04 22:56:43] Site Key present: NO
+[2026-10-04 22:56:43] API Key present: YES
+[2026-10-04 22:56:43] Expected action: login
+[2026-10-04 22:56:43] Minimum score: 0.3
+[2026-10-04 22:56:43] CAPTCHA token received: YES
+[2026-10-04 22:56:43] ERROR: Site key is empty.
+[2026-10-04 22:56:43] ========================================
+[2026-10-04 22:56:43] BMS reCAPTCHA LOGIN CHECK FINISHED
+[2026-10-04 22:56:43] Final CAPTCHA result: REJECTED
+[2026-10-04 22:56:43] ========================================
+[2026-10-04 22:59:08] ========================================
+[2026-10-04 22:59:08] BMS reCAPTCHA LOGIN CHECK STARTED
+[2026-10-04 22:59:08] ========================================
+[2026-10-04 22:59:08] Project ID: barangay_captcha
+[2026-10-04 22:59:08] Site Key present: YES
+[2026-10-04 22:59:08] API Key present: YES
+[2026-10-04 22:59:08] Expected action: login
+[2026-10-04 22:59:08] Minimum score: 0.3
+[2026-10-04 22:59:08] CAPTCHA token received: YES
+[2026-10-04 22:59:08] Sending CreateAssessment request to Google...
+[2026-10-04 22:59:09] Google HTTP status: 403
+[2026-10-04 22:59:09] Google response:
+[2026-10-04 22:59:09] {
+    "error": {
+        "code": 403,
+        "message": "Permission denied on resource project barangay_captcha.",
+        "status": "PERMISSION_DENIED",
+        "details": [
+            {
+                "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+                "reason": "CONSUMER_INVALID",
+                "domain": "googleapis.com",
+                "metadata": {
+                    "consumer": "projects/barangay_captcha",
+                    "containerInfo": "barangay_captcha",
+                    "service": "recaptchaenterprise.googleapis.com"
+                }
+            },
+            {
+                "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+                "locale": "en-US",
+                "message": "Permission denied on resource project barangay_captcha."
+            },
+            {
+                "@type": "type.googleapis.com/google.rpc.Help",
+                "links": [
+                    {
+                        "description": "Google developers console",
+                        "url": "https://console.developers.google.com"
+                    }
+                ]
+            }
+        ]
+    }
+}
+[2026-10-04 22:59:09] GOOGLE API ERROR DETECTED.
+[2026-10-04 22:59:09] Error code: 403
+[2026-10-04 22:59:09] Error status: PERMISSION_DENIED
+[2026-10-04 22:59:09] Error message: Permission denied on resource project barangay_captcha.
+[2026-10-04 22:59:09] Error details:
+[2026-10-04 22:59:09] [
+    {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "CONSUMER_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+            "consumer": "projects/barangay_captcha",
+            "containerInfo": "barangay_captcha",
+            "service": "recaptchaenterprise.googleapis.com"
+        }
+    },
+    {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "Permission denied on resource project barangay_captcha."
+    },
+    {
+        "@type": "type.googleapis.com/google.rpc.Help",
+        "links": [
+            {
+                "description": "Google developers console",
+                "url": "https://console.developers.google.com"
+            }
+        ]
+    }
+]
+[2026-10-04 22:59:09] Token valid: NO
+[2026-10-04 22:59:09] Invalid reason: [NONE]
+[2026-10-04 22:59:09] Returned action: [EMPTY]
+[2026-10-04 22:59:09] Expected action: login
+[2026-10-04 22:59:09] Risk score: 0
+[2026-10-04 22:59:09] RESULT: REJECTED
+[2026-10-04 22:59:09] ========================================
+[2026-10-04 22:59:09] BMS reCAPTCHA LOGIN CHECK FINISHED
+[2026-10-04 22:59:09] Final CAPTCHA result: REJECTED
+[2026-10-04 22:59:09] ========================================
+[2026-10-04 23:02:44] ========================================
+[2026-10-04 23:02:44] BMS reCAPTCHA LOGIN CHECK STARTED
+[2026-10-04 23:02:44] ========================================
+[2026-10-04 23:02:44] Project ID: barangay-captcha
+[2026-10-04 23:02:44] Site Key present: YES
+[2026-10-04 23:02:44] API Key present: YES
+[2026-10-04 23:02:44] Expected action: login
+[2026-10-04 23:02:44] Minimum score: 0.3
+[2026-10-04 23:02:44] CAPTCHA token received: YES
+[2026-10-04 23:02:44] Sending CreateAssessment request to Google...
+[2026-10-04 23:02:44] Google HTTP status: 200
+[2026-10-04 23:02:44] Google response:
+[2026-10-04 23:02:44] {
+    "name": "projects/1094076383231/assessments/7eb8e2923d000000",
+    "event": {
+        "token": "0cAFcWeA6C5zLTLfWp3hGn2A5brNDqSrHlSmVMMXk5WVSbBRS5tW1lXXIn_EOp-8FwVHw5_zBEEG25zH5k2bI8-DNdHw5iezskjzKLPsKX7nKZtKj0hLD0GVRFuv4l5kcKSm0k-tAMOAe5PXD6oQhkGDmOPMlUrq0_A94WnRaogjGjxljs_wJeKmi-3qstuDl5QXVIEpFHcdcF-y2kS9kWIPfbz7ZxByIpeCLAVQwGia8fI7mp8z26HkX6XAMaKWw_bSnB_yyQo5qrzYda7g3BVFkW5at-sAkauBuZgAPBUe7AJsACJMjpnEKjqzDyAvxgff5JjHRbM9U5ANu0Z1s9-bnVoCAGtjZNXopca6HHoarN23F9V00iO1SXZwUy3lFoR_YCwBBlL4qLQPS76LkAnzmFbYd-FXRVtG5fAHchMaaIoXVc_sLFr7o92axsNVsDB3qqYWPRZn-gvGtW-mge5V_Z_vuiqb_HbOHPlrCHMN56_bDod1pX2W-fhyzkIXeDVB2_C2GN1VEnRO9uWxm_ERUQ-BcYiYH7LxDz5hsQ_Aup_t973ZptakwPbs-OTBK9Yft6K70sU4u-UdiWfmY_5YDDHUnw2bfvEpDVRUSb2JGTs7wlNEzBiPtiOn74a3OMmsYmBKDIhZqTlCLsqoUNmErKJOuLPObhV2ATpZUtsX3PizgtGWkVVpvQqbkBIdQzjOC-UvOxKLoF8t8RA6UT_L4aedDsZn0fdKHrZyS5TdYdVAL1HTnFwLAYGTRqPyByJBZwYRttIZQF9WmygITqUpEF95KxnJp7MxXADYpwu2fYCh5MYbeVQe9jbG9xJzFPbYnD5vYxbbcJH6lD27eN6Pevpow4MflTGNPYghqiprhNpuLdHnxrIqIM4UAYLFZ8Ff5VE7vFOTH5SpZnJAPbFOITBRY6me-YC3eHB22zCIoCDt514fcznYYWHU2jHDcDF9kgrPy01SEE5urJmnHNnrkI6Bs2YF2ddWRhlhH3EVBHw9ai2j-O2jEmhidCvfvzk8fp1anRA3Kq0-nTDZaWmLdL3bHsFqNLPEKbs0apJTRA2YnQYVHS2Nj4zhAeoEMveRC_rTt514UqTFl0VFTndIFh3Y5a2Dg87-7ihpYAv_ahWdq7--zS85mDc9f2HYOok6lUuFYQzdV3TdSeJ3tMJ_18UferUnRkQQcsrffRxiuSh1ARVWykzeKjh0sKDVNFHsZAzMwBHn7xJS8O8EcQdzj1Gnx0BRa4UBDynWeYfGUMMk_B-Qd26OYyP9iGVK5WRw0Qg_k7K_pYeAOFlkGFowcfdjnnND0Q709RLREki1czhXSex0DaEhglM-wgQoGX1WtCGh9KkwCa1kZfIl8KRofopV1dnMAD-PazSFDn2StMRm44BPvwE0lT5ptjO3gIvmDC11zXxaU9vS4mfkoDIuT5qHk3c06g1cDuTQb8soFOmU39x7TfNApcPizHxkGsNTCw1Mlo5KUnWdpyTYFm76FAMW9FxaNEeGxPsV2tJQA4iNIOqBsQrlK2wvRzT2GkayIUYkvIs_0NQanB1aXKJPLDDhM_BqAS1OUNE7rF56WTWkOv8r6YSxyhsMz7zWb-QsVBY9JbKrUG8ljo_ra9g5LP3mJeUS-nGqsJHJ052exaX7V4Ecb_l1bfS7N3_NaVAMMch0ASpjrsmznyXLiRI5XjSs2Cnz0eY4ejRIaaXoEPi80eXqO2u4MVXEeYCI7iv2BYKLhIc2N--Kn2iq1doE_tIz4cq9qNyxHwy-o5MTlDSPFB3NXk36f9reN20RaAKTmQJY4QQlFMt-x7tHl3jqveHVwUxhWasNUHhh3Q7FS8UmXhFY8nLM0YqjEAPqcHhFzK7p65IO-TpUQtHuTBc3EUzgzxgtbPVRP7HTu-8BPuNMVlXDtsE13PRbobmApU5tkFHsOTN4p8ampCQtUA1-X6s6kW2jtUiOvm2REoom5rEc-6BE5KibmR-g1CXHKtlueQM9EAQu9TihB4rn_mWU_vP8u_zfLNPPcGDRDfbT9Cscrg9vLtnf9aUwIuF12AsdnGrF1jqAXaJaEUqwU7F1AZ3rr3ZbRqcNPxpiMy8yQOLICzgSNM5vtIMFk8cJt0heyWT-tm42Kw0kYQn0k4VTgbM0td-kVMQTODZOIhEEmUUd1-fWMLkLpYifbrwZ6S1yWnWVo-Uobp9tbxdsiZLhBNe8zRypdWygx1YB2q6LyBvTVbRRqHcW9pCS6WYa3GLrHy2RGCe7MFrn3JTXm-H6BgaJsVO4VYUB04F2jmge9b0cohSjCRz3nL38AnQ0ZM8Q_l5WsMtDmeQcZWUZK_vcSnCadP-tBV2htLB-4x8-dLpzgFCEEsCdo",
+        "siteKey": "6LeDTbosAAAAAEKRg2OKrhBv620cRvwTPw8Fbsv4",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36 Edg/154.0.0.0",
+        "userIpAddress": "::1",
+        "expectedAction": "",
+        "hashedAccountId": "",
+        "express": false,
+        "requestedUri": "",
+        "wafTokenAssessment": false,
+        "ja3": "",
+        "ja4": "",
+        "headers": [],
+        "firewallPolicyEvaluation": false,
+        "fraudPrevention": "FRAUD_PREVENTION_UNSPECIFIED"
+    },
+    "riskAnalysis": {
+        "score": 0.9,
+        "reasons": [],
+        "extendedVerdictReasons": [],
+        "lastChallengeType": "CHALLENGE_TYPE_UNSPECIFIED",
+        "challenge": "CHALLENGE_UNSPECIFIED",
+        "verifiedBots": []
+    },
+    "tokenProperties": {
+        "valid": true,
+        "invalidReason": "INVALID_REASON_UNSPECIFIED",
+        "hostname": "localhost",
+        "androidPackageName": "",
+        "iosBundleId": "",
+        "action": "login",
+        "clientSignalsFailed": false,
+        "createTime": "2026-10-04T21:02:13.417Z"
+    },
+    "accountDefenderAssessment": {
+        "labels": []
+    }
+}
+[2026-10-04 23:02:44] Token valid: YES
+[2026-10-04 23:02:44] Invalid reason: INVALID_REASON_UNSPECIFIED
+[2026-10-04 23:02:44] Returned action: login
+[2026-10-04 23:02:44] Expected action: login
+[2026-10-04 23:02:44] Risk score: 0.9
+[2026-10-04 23:02:44] RESULT: ACCEPTED
+[2026-10-04 23:02:44] ========================================
+[2026-10-04 23:02:44] BMS reCAPTCHA LOGIN CHECK FINISHED
+[2026-10-04 23:02:44] Final CAPTCHA result: ACCEPTED
+[2026-10-04 23:02:44] ========================================
+[2026-10-04 23:03:08] ========================================
+[2026-10-04 23:03:08] BMS reCAPTCHA LOGIN CHECK STARTED
+[2026-10-04 23:03:08] ========================================
+[2026-10-04 23:03:08] Project ID: barangay-captcha
+[2026-10-04 23:03:08] Site Key present: YES
+[2026-10-04 23:03:08] API Key present: YES
+[2026-10-04 23:03:08] Expected action: login
+[2026-10-04 23:03:08] Minimum score: 0.3
+[2026-10-04 23:03:08] CAPTCHA token received: YES
+[2026-10-04 23:03:08] Sending CreateAssessment request to Google...
+[2026-10-04 23:03:08] Google HTTP status: 200
+[2026-10-04 23:03:08] Google response:
+[2026-10-04 23:03:08] {
+    "name": "projects/1094076383231/assessments/a22474a995000000",
+    "event": {
+        "token": "0cAFcWeA76Qz_Xh0mV8CQBC22zgcEXBOm3HeCLGmbKFmq2k4WtDKfgi01WBmf23ewTfIFJUl9_-6Cn0nLBpDHrz-48oJZ3y-4iheVspvXjETHgZDHK8B-8i1EmY1R8r9EnEOSfAktYiPyLHtRlAv40Ghqrc9xYvAvVZguuhObw7pzfVekZiP7_JPiHd7BiPuIYuy46YRf0ZjK4FuYp32zWQ6XLbEdvf0vwXymRRg7ZBBKn6-ofhFnqhUHCkkUEklEgDqNXp7_VCmBWIejGehoruyeJ94PxMabl2_lD7mGyPzp3nxOnC4ldpttkeU4Sn2Fi5SQNa7q5XDJHucWsAiYlBssMJIPWMIVQHIFZZUfJy2XZPdnIpuXKMtv8uAEYZkKKGAtxPO-s30xNCjCMiqR894ZE0dmzHCSE3JV9UBicSXKD5CZ2eoJBIYUJoZ5YQ4sVbCZyBD-4VIIx0KOKzCB2hJ5iyl0tqhEgmZeXGSC2uOUinFsGKVJ84acXfnp2DfSKzKi5iDpWKz1hMO3XcqAae1RdPjyGfAH6FQKtlGlTmtMG1IeXBGCeHCdt0RsnW4kATy9Ic02QA2ef5Pl9sVUWbPFXjHv8I5khN89cb2Ob5_8O8QcQbc_OPeEJDkdk0hu-ugG4O6tHbvPQBV9b819uWaZXvHDsbdNJpXbeXRgZFDU_tPHUz44vZKCa2RAttQp1JvEETlDli_GJ-f8436EyoKfpbB3at_CdwodRjSggxuhoITcfPLTRKCMGHlj_bwaPsogOXKGcAovWg1DBfgzw_2xkJavyCkWQIGvvfbxZjuDWG7jpcyNdiNH_kwKH28niObKQmHW8RSG3GWomMvRvStn4KZ-3yb1FeYi3NU0lkFqjpo5dX5uIOWuEjd1BhOG6aHWq_GFqPA-FqBgJOLrDqy4gF_O5533sN8QVZpL7ikHzu_BJZ2PrDPTlmD2YziYgmzhUA-1snPYAXi2mGhUGkou9wQLOVY8FwuQO1rOJPm5RF2FxuDZYvCD7eKYAsXczvo4k5v40pcCz1-zMhhaDNwOEsGP8dUwMb5y_utGkVXOTrIVkC2xe7bc7Kj_CTQBGD0gfZkSXooVwBXu01CwknfA_dQ7WPWZHRzlZ-G2JqR7gqaOYa3cojwv8VXZCbn08HIwpmz-E-PYEla70gqGr4wNuwJIWaqkEYAXlwJH9GpesZJycns4zkqkTcGTIZITFraN_DwaCtrqcIT5oyVq3zMK969P8GRwdsNek2pbSSSGrLMYgElFIm9tWRwTTTbISx1PIfP3a8XZLBsTyJPeX3K51mPNMo4Pg22MVq6Q6YFmjEvRGQJFeFoqwEeSDxZ4W0XMFXQTqLiqvhNdpFJUmEQybDxlVbBcW37ILkecVN8Zj9CgmQzXLwnoOVdgFD1Gz9kCFCDYGYGoEuYUu5Bu4Z1xIW0yEpKeWMbsYy7DNShIK6e37IacRqRWGEvrPh-fuTcsyfGANpdLwhv4-5Sq_OR-74X26bep36v-Kz306iWbziXZIrfbUTWMfqWx9VUU-178ZHQfH5OtQYgJ4i3CWA-PcB5sSRn7QFxFotMB4_P5pgyowxNWvRFs2KQLdVlvx9nN56p08LSwqJfYRzzBQ-PjUipXQUe6NiNrtcSheX5QqAd6sg2ummYZh5lxmcOv3YpuHzR4IId9632FvKnqYMeb4E7w2bXOdSpykSvhFvY2Ia_8hPOBIGZQbBtIdH7Q-h6LwGm70-0x6SYoJtm432unMwg7WN_lvJjExgKr_Ub1ab5waX5yGFV6xfwD2OjWvrt_GR3DJEy5KWfmwjt0GntDH9JG-r9csS4uJPKibNa_nGhfGvrjEbY92HDMkRCh611YP5tAYf8Cm4MzoTt0Cf1SMqEUkQVz6w8YVsL8PsqehCAIqT1PXhYy84ULdqsqEKz8HAY1YrqZeNqWaeZPn_jkx3mAMe7CFuigISRLd6frAP3kzHwzSBbx5PNglNlNImFqZ-slF0Qdm3w1rveeDTV8t0t9VuFW54gRf-xjYSZoJR7jPnQeqyhbwfDDPX10e3C9KI8AoC86dYGJOmmh8bzd4zMpapiWLPIyfueSk54iVto3ble_FYBwKtexdCSlnXfVc1CxhxbPGOVVtd2kjz91nGUq0Fr9qST9tBqVE6JbZcNwn2w7faiYvJ5hlno69eg_qLqD8GtQNQ3ghM2lN2HVYDNOFudwpTDMbPLtwf7_UKsPXRbC8k5Ao4y6Jmvu3-p-glxGm31BGqS4n0QQa8bYWYN_fryxZAXNpRccuVxq7VvBTpx1e8fQgUSPjVYXJDDTQ4cTZGEnY",
+        "siteKey": "6LeDTbosAAAAAEKRg2OKrhBv620cRvwTPw8Fbsv4",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36 Edg/154.0.0.0",
+        "userIpAddress": "::1",
+        "expectedAction": "",
+        "hashedAccountId": "",
+        "express": false,
+        "requestedUri": "",
+        "wafTokenAssessment": false,
+        "ja3": "",
+        "ja4": "",
+        "headers": [],
+        "firewallPolicyEvaluation": false,
+        "fraudPrevention": "FRAUD_PREVENTION_UNSPECIFIED"
+    },
+    "riskAnalysis": {
+        "score": 0.9,
+        "reasons": [],
+        "extendedVerdictReasons": [],
+        "lastChallengeType": "CHALLENGE_TYPE_UNSPECIFIED",
+        "challenge": "CHALLENGE_UNSPECIFIED",
+        "verifiedBots": []
+    },
+    "tokenProperties": {
+        "valid": true,
+        "invalidReason": "INVALID_REASON_UNSPECIFIED",
+        "hostname": "localhost",
+        "androidPackageName": "",
+        "iosBundleId": "",
+        "action": "login",
+        "clientSignalsFailed": false,
+        "createTime": "2026-10-04T21:02:40.960Z"
+    },
+    "accountDefenderAssessment": {
+        "labels": []
+    }
+}
+[2026-10-04 23:03:08] Token valid: YES
+[2026-10-04 23:03:08] Invalid reason: INVALID_REASON_UNSPECIFIED
+[2026-10-04 23:03:08] Returned action: login
+[2026-10-04 23:03:08] Expected action: login
+[2026-10-04 23:03:08] Risk score: 0.9
+[2026-10-04 23:03:08] RESULT: ACCEPTED
+[2026-10-04 23:03:08] ========================================
+[2026-10-04 23:03:08] BMS reCAPTCHA LOGIN CHECK FINISHED
+[2026-10-04 23:03:08] Final CAPTCHA result: ACCEPTED
+[2026-10-04 23:03:08] ========================================
+[2026-10-05 19:10:32] ========================================
+[2026-10-05 19:10:32] BMS reCAPTCHA LOGIN CHECK STARTED
+[2026-10-05 19:10:32] ========================================
+[2026-10-05 19:10:32] Project ID: barangay-captcha
+[2026-10-05 19:10:32] Site Key present: YES
+[2026-10-05 19:10:32] API Key present: YES
+[2026-10-05 19:10:32] Expected action: login
+[2026-10-05 19:10:32] Minimum score: 0.3
+[2026-10-05 19:10:32] CAPTCHA token received: YES
+[2026-10-05 19:10:32] Sending CreateAssessment request to Google...
+[2026-10-05 19:10:32] Google HTTP status: 200
+[2026-10-05 19:10:32] Google response:
+[2026-10-05 19:10:32] {
+    "name": "projects/1094076383231/assessments/642eed723d000000",
+    "event": {
+        "token": "0cAFcWeA6fb7ooz5QJBQU0JdGPxC8QdnKoQrw6yP8g3AHNGlayiqOVLdCrrt7A8GKCY_RgEtqYNKaN0UgBvGs-ToY4PHHO5kr4Ftq6XwoDQzPgz7vmcsYscQRKQ3aYkZQWeHyRK-xu_Z7SAYtoTADS0Wv-UUBSjqL7k3M4JMle4iSen8GDf3yGP0iCEtbIeOXo-azKZ3xEj2WM72Ev8FGAYnlJzku50WsoDRFWB0aZVQzeJop81v0ksK05F8ANDdM3HHa9U_krK5Yf5v1jbWr3mDH2mGjHmQ5CyPIyPaXaLfl8-5tDIWAdlpn4JPPjxvm3BF2Y021GmcrbFB1uGMFq5ui8NLTXTKEWnz_CbxK5gsHemifewA38xvgC1YaicCt7mxBKAAXIKEr-BjucGmc0WuTbwtenIjFn_fZneSdCC9fdmqi1mNHbEJecCuUCb3n0yX86uec3NmyHX8N5r230WPy0D6O2RL4ne9zoYT0ldd8nW-rkT2tIZRc-qql7JJBwdiVoU2nubG1BTaGf9zYL7RtaBwHB1MJnN0Jvl4n0r_eUjB26sWbOI9xe-2ksoF8-BJ0m9Vc6q2sqyDE-fMETozqigYT-juCIBGPWdt1vbekcbNZLx_arIFUMiZRK_3FfKfcTJoUJ_WX_EuyLL68R4-hCN5wHK8nCgNXA1AZcmok5tvyRfWc9sRwe_RW5Z-tfvuevG7xmhB5-HlJI9U0PAdORROALbseBJe1BnOkjdn-Z4Tgufw9b-iFMvlrRIcproMn_F3jfErhLdVycKsz3XAvazkkFMnvrmqjv2zrzTQMgo1xXK1WiYv-yQNPDQR2OHQndlKKgXniXO6hz7bnvfe6ipM5bkIX5tZkG-0BbxLcHzmBh95klGoYWgqxT1Pm4rTcTjWCMNv-Hvl-OGOkksA-Ql55zQJIqU20LlEfn6PsVaCgoYaajMy2ZQ1oYmFaG9j8n8jkbJo-wpAveyfoTn7QLMM69xjSfESViKscZ-31GzK9FUKQX3SxvwYxrbOtZ1xatLuoi89O6BKkNtZx8CsODIZX9asWBJad9J6RMMCpPpHStFsvGX7ipc-_wtwfXUEyGdmAry7G6qE_7u0hdlyYMBvx8MliG1ni0FCUGMHWBfu94bhF2DiygAlX2Jn4dV6pucwKcqnEJ_RhSzXwI2H2DU2kMfKiQWqkhEWplRXY50a-OcqCICwL_d8j_a2hplQgc1TU-salIhRFzau4P9gJgKiCQDs87phK3pjSYGXzO4b9NJzIy-HK46vpHe-92vA9vYi4rvOkUn2rZWMKib55EICKimwQ3aZRJ-1w3XgPDQy8O5KWdRSV9x0t8xvIfIzufjOyy9qYAQreJq-6yi4sKoJTWV2iz8OjEVr6oYq50prsFXwizilX0D2Rf8siscGP11IAaQQZNrCxDOKjDfUgQ9DQNJGoVYGY9ox6GrBFY_QbEtkB1ee0SM1gfdpIscLI6YJHa-QHMoiKwjIsz9jVi07wTXxcTjZPtN_IMMeTvtfhsUonU6dLfF2mztGNqjM95XESR2TVmX8lMWWAGPUgWu5o9WOXhg9C1k8uVmdy7glq613g73zZMGTzKecJFnW5DSGwsDODl39OFAN9Njp9-3lDBUhPVzZlJFizbqSlcpZYTjFL3ZMpplYMa4rq5eMGzpgpJkN0IWNzhwY6cEn1anhgIq-XEjkoT3jn-cWZlGWS_u-Ka1b-rJQWu7Ju4aL0ZLCfbxSoliTOPNC0PA9C7Lz31m-U9ERWrfECgzj-kUc6dBLAAC70b6m5-8OgkOhsUwETyCT1IRC3Q-mN0henlSxsoVJS2agge8Y1qUUR3jUJHwr6ykY73a5nReaqcH7LClSXq8BWoOJpeLYWfFJsNDTACcLFwdGntm3tC2T6BBYXjfBsIi-vRyJXZUeHG4kGOQkVKFSm77Zz01Ne44nQaqZd0DpWb204fnYho6IS0G7L1vI9MrT6_gbAmV7gamtHjEymcbJLKuG17JDzQj0wD7CfqBvatyL7TKqhA8XOri54YwDzsezyTQhE4Ktx9m5Sb9Icd9a5BjwQLiJAjXvyJI7evUq-Y0KbVVeOyiGBfFrLHr_7wi1urX4dt77qiqmRWlQ3ewCCslkoVPL1Q0vAFfJ-cWqwqpm1X3-DgBIYaWGeDjwuemiIHNj9OXfxIHRgUgPaYlXnNuUjA0coy8Zwnl0mgpV_U9oEwpkluFsoM4yl4h5IZFISkLwM85YpKj5t8Ph6Qrxxed0Y05RpJTZA5Etxp1vwxXo7J5pCt1lFscmx1hWRKfbeBPWmhC5XmCDABy9Wv6TtH",
+        "siteKey": "6LeDTbosAAAAAEKRg2OKrhBv620cRvwTPw8Fbsv4",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36 Edg/154.0.0.0",
+        "userIpAddress": "::1",
+        "expectedAction": "",
+        "hashedAccountId": "",
+        "express": false,
+        "requestedUri": "",
+        "wafTokenAssessment": false,
+        "ja3": "",
+        "ja4": "",
+        "headers": [],
+        "firewallPolicyEvaluation": false,
+        "fraudPrevention": "FRAUD_PREVENTION_UNSPECIFIED"
+    },
+    "riskAnalysis": {
+        "score": 0.9,
+        "reasons": [],
+        "extendedVerdictReasons": [],
+        "lastChallengeType": "CHALLENGE_TYPE_UNSPECIFIED",
+        "challenge": "CHALLENGE_UNSPECIFIED",
+        "verifiedBots": []
+    },
+    "tokenProperties": {
+        "valid": true,
+        "invalidReason": "INVALID_REASON_UNSPECIFIED",
+        "hostname": "localhost",
+        "androidPackageName": "",
+        "iosBundleId": "",
+        "action": "login",
+        "clientSignalsFailed": false,
+        "createTime": "2026-10-05T17:01:13.146Z"
+    },
+    "accountDefenderAssessment": {
+        "labels": []
+    }
+}
+[2026-10-05 19:10:32] Token valid: YES
+[2026-10-05 19:10:32] Invalid reason: INVALID_REASON_UNSPECIFIED
+[2026-10-05 19:10:32] Returned action: login
+[2026-10-05 19:10:32] Expected action: login
+[2026-10-05 19:10:32] Risk score: 0.9
+[2026-10-05 19:10:32] RESULT: ACCEPTED
+[2026-10-05 19:10:32] ========================================
+[2026-10-05 19:10:32] BMS reCAPTCHA LOGIN CHECK FINISHED
+[2026-10-05 19:10:32] Final CAPTCHA result: ACCEPTED
+[2026-10-05 19:10:32] ========================================

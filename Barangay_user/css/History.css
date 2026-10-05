@@ -1,0 +1,394 @@
+/* HISTORY PAGE */
+.historybg {
+  background-color: #f4f7f9;
+}
+
+.historytitle {
+  color: #3b62d1;
+  font-size: 32px;
+  margin-bottom: 25px;
+}
+
+/* SEARCH INPUT */
+#searchInput {
+  width: 100%;
+  padding: 12px 15px;
+  border-radius: 8px;
+  border: 1px solid #3f51b5;
+  font-size: 14px;
+  margin-bottom: 20px;
+  outline: none;
+}
+
+#searchInput:focus {
+  border-color: #002244;
+  box-shadow: 0 0 5px rgba(63, 81, 181, 0.3);
+}
+
+/* FILTER */
+.filtercontainer {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 40px;
+}
+
+.filterbtn {
+  background: #3f51b5;
+  color: white;
+  padding: 10px 30px;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: bold;
+  min-width: 120px;
+}
+
+.filterbtn.active {
+  background: #002244;
+}
+
+/* GRID */
+.historygrid {
+  display: grid;
+  /* Improved responsiveness */
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+/* CARD */
+.historycard {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.historycard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* HEADER */
+.cardheader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.cardheader h3 {
+  color: #3f51b5;
+  font-size: 18px;
+  max-width: 60%;
+  margin: 0;
+}
+
+/* BODY */
+.cardbody {
+  word-wrap: break-word; /* prevents text overflow */
+}
+
+.cardbody p {
+  color: #333;
+  font-size: 14px;
+  margin: 4px 0;
+}
+
+/* PAYMENT INFO */
+.payment-info {
+  margin-top: 8px;
+  font-size: 0.9em;
+  color: #444;
+  background: #eef2f7;
+  padding: 8px;
+  border-radius: 5px;
+}
+
+.payment-info p {
+  margin: 2px 0;
+}
+
+/* REASON & NOTE BOX */
+.reason-message-box {
+  background: #f8f9fa;
+  border-left: 4px solid #ffc107;
+  padding: 10px 12px;
+  margin-top: 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.reason-message-box.rejected {
+  border-left-color: #dc3545;
+  background: #fff5f5;
+}
+.reason-message-box.approved {
+  border-left-color: #28a745;
+  background: #f5fff5;
+}
+.reason-message-box.pending {
+  border-left-color: #ffc107;
+  background: #fffbf0;
+}
+.reason-label {
+  font-weight: 600;
+  color: #333;
+  font-size: 12px;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.reason-text {
+  color: #555;
+  word-wrap: break-word;
+}
+
+/* STATUS */
+.complete {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+  background-color: #4caf50;
+}
+
+.pending {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  background-color: #ffc107;
+  color: #333;
+}
+
+.cancelled {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+  background-color: #f44336;
+}
+
+/* MODAL STYLES */
+.history-modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.history-modal-content {
+  background: #fff;
+  width: 100%;
+  max-width: 600px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.history-modal-header {
+  background: #3f51b5;
+  color: #fff;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.history-modal-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.btn-close-modal {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.history-modal-body {
+  padding: 20px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* FORM-LIKE MODAL LAYOUT STYLING */
+.form-layout-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 75vh;
+  overflow-y: auto;
+  padding: 15px 20px;
+}
+
+.form-section-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #6c757d;
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 4px;
+  margin-top: 10px;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.form-group.half {
+  flex: 1;
+}
+
+.form-group label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.form-control-static {
+  background-color: #f8f9fa;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  color: #212529;
+  min-height: 20px;
+  word-break: break-word;
+}
+
+.textarea-box {
+  white-space: pre-wrap;
+  background-color: #f8f9fa;
+}
+
+.error-box {
+  background-color: #fff8f8;
+  border-color: #f5c6cb;
+  color: #721c24;
+}
+
+/* RESPONSIVE DESIGN */
+@media (max-width: 1366px) {
+  .historytitle {
+    font-size: 28px;
+  }
+
+  .filtercontainer {
+    flex-wrap: wrap; /* prevents overflow */
+    gap: 10px;
+  }
+
+  .filterbtn {
+    padding: 8px 20px;
+    font-size: 13px;
+  }
+
+  .historygrid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 15px;
+  }
+
+  .historycard {
+    padding: 18px;
+  }
+
+  .cardheader h3 {
+    font-size: 16px;
+  }
+
+  .cardbody p {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .historygrid {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .historytitle {
+    font-size: 22px;
+    text-align: center;
+  }
+
+  /* Filter buttons */
+  .filtercontainer {
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 25px;
+    justify-content: center;
+  }
+
+  .filterbtn {
+    padding: 8px 15px;
+    font-size: 12px;
+    min-width: auto;
+    flex: 1;
+  }
+
+  /* Grid */
+  .historygrid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+  }
+
+  /* Cards */
+  .historycard {
+    padding: 15px;
+  }
+
+  /* Page spacing */
+  .historybg {
+    padding: 10px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+}

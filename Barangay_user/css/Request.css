@@ -1,0 +1,285 @@
+/* REquest Page*/
+.requestgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 25px;
+  margin-top: 20px;
+}
+
+/* CARD */
+.requestcard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+
+  background: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+
+  padding: 40px 30px;
+  gap: 15px;
+
+  text-decoration: none;
+  color: #333;
+
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+/* Remove link color for all states */
+.requestcard:link,
+.requestcard:visited,
+.requestcard:active {
+  color: #333;
+  text-decoration: none;
+}
+
+/* Hover animation */
+.requestcard:hover {
+  transform: translateY(-8px);
+  border-color: #3f51b5;
+  box-shadow: 0 12px 24px rgba(0, 51, 102, 0.15);
+}
+
+/* ICON */
+.requestboxicon {
+  width: 100px;
+  height: 100px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.requestboxicon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* TEXT */
+.requestboxtext h3 {
+  color: #3b62d1;
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+.requestboxtext p {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.requestcard h3,
+.requestcard p {
+  text-decoration: none;
+}
+
+/* Forms*/
+.formsection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  margin-top: 30px;
+  align-items: flex-start;
+}
+
+.formgroup {
+  flex: 1;
+  min-width: 350px;
+}
+
+.formgroup h3 {
+  color: #3f51b5;
+  margin-bottom: 15px;
+  font-size: 18px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 5px;
+}
+
+.formgroup input,
+.formgroup textarea,
+.formgroup select {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 20px;
+  border: 1px solid #3f51b5;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: #fff;
+  transition: border-color 0.3s ease;
+}
+
+.formgroup select {
+  height: 45px;
+  cursor: pointer;
+}
+
+.formgroup input:focus,
+.formgroup textarea:focus,
+.formgroup select:focus {
+  outline: none;
+  border-color: #3f51b5;
+  box-shadow: 0 0 5px rgba(0, 51, 102, 0.2);
+}
+
+/*Buttons*/
+.buttoncontainer {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+}
+
+.btnsubmit,
+.btncancel {
+  padding: 12px 35px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.btnsubmit {
+  background: #3f51b5;
+  color: white;
+}
+
+.btnsubmit:hover {
+  background: #3f51b5;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 51, 102, 0.2);
+}
+
+.btncancel {
+  background: #e0e0e0;
+  color: #555;
+}
+
+.btncancel:hover {
+  background: #d0d0d0;
+}
+
+/*Upload Box */
+.uploadbox {
+  border: 1px solid #003366;
+  padding: 20px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.uploadbox p {
+  font-size: 13px;
+  color: #666;
+  margin: 0;
+  text-align: left;
+}
+
+.uploadbox input[type="file"] {
+  border: none;
+  padding: 0;
+  margin-bottom: 0;
+  font-size: 12px;
+}
+
+
+/*  RESPONSIVE FIXES */
+@media (max-width: 1366px) {
+  .requestgrid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* from 400 → 300 */
+  }
+
+  .requestcard {
+    padding: 30px 25px;
+  }
+
+  .requestboxicon {
+    width: 80px;
+    height: 80px;
+  }
+
+  .requestboxtext h3 {
+    font-size: 20px;
+  }
+
+  .requestboxtext p {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .requestgrid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+
+  .formgroup {
+    min-width: 280px;
+  }
+
+  .buttoncontainer {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 768px) {
+  
+  .requestgrid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+  }
+
+  /* CARD */
+  .requestcard {
+    padding: 25px 20px;
+  }
+
+  /* ICON */
+  .requestboxicon {
+    width: 70px;
+    height: 70px;
+  }
+
+  /* TEXT */
+  .requestboxtext h3 {
+    font-size: 18px;
+  }
+
+  .requestboxtext p {
+    font-size: 13px;
+  }
+
+  /* FORM */
+  .formsection {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .formgroup {
+    min-width: 100%;
+  }
+
+  /* BUTTONS */
+  .buttoncontainer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btnsubmit,
+  .btncancel {
+    width: 100%;
+    padding: 12px;
+  }
+
+  /* UPLOAD */
+  .uploadbox {
+    padding: 15px;
+  }
+}

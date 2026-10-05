@@ -1,0 +1,206 @@
+/* ===============================
+   ATTENDANCE PAGE STYLE
+================================ */
+
+/* Page Title */
+.content h2 {
+    font-size: 26px;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+/* Section Titles */
+h3 {
+    margin-top: 30px;
+    margin-bottom: 10px;
+    font-size: 20px;
+    color: #444;
+}
+
+/* Alert Messages */
+.alert {
+    padding: 12px 18px;
+    margin-bottom: 20px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.alert-success {
+    background: #e8f7ee;
+    color: #1c7c42;
+}
+
+.alert-warning {
+    background: #fff4e5;
+    color: #c47a00;
+}
+
+/* ===============================
+   TIME BUTTONS
+================================ */
+#timeForm {
+    margin-bottom: 30px;
+}
+
+#timeForm button {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 6px;
+    margin-right: 10px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+#timeForm button[value="time_in"] {
+    background: #2e86de;
+    color: white;
+}
+
+#timeForm button[value="time_out"] {
+    background: #e74c3c;
+    color: white;
+}
+
+#timeForm button:hover {
+    opacity: 0.9;
+}
+
+/* ===============================
+   FILTER FORM
+================================ */
+form.filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+form.filter input,
+form.filter select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+form.filter button {
+    padding: 8px 16px;
+    background: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: 0.2s;
+}
+
+form.filter button:hover {
+    background: #219150;
+}
+
+/* ===============================
+   TABLE DESIGN
+================================ */
+.table-container {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    background: white;
+    min-width: 700px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+table th {
+    background: #3f51b5;
+    color: white;
+    padding: 12px 15px;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+}
+
+table td {
+    padding: 10px 12px;
+    border-top: 1px solid #eee;
+    font-size: 14px;
+}
+
+/* Column Alignment */
+table td.name,
+table td.position {
+    text-align: left;
+}
+
+table td.time,
+table td.hours,
+table td.status,
+table td.salary {
+    text-align: center;
+}
+
+/* Row Hover */
+table tr:hover {
+    background: #f9f9f9;
+    transition: background 0.2s;
+}
+
+/* Attendance Status Colors */
+tr.present {
+    background-color: #d4edda !important;
+}
+
+tr.absent {
+    background-color: #f8d7da !important;
+}
+
+/* ===============================
+   BUTTONS INSIDE TABLE
+================================ */
+.btn {
+    padding: 6px 10px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: 13px;
+    display: inline-block;
+}
+
+.btn-warning {
+    background: #ff9800;
+    color: white;
+}
+
+.btn-danger {
+    background: #e53935;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #fb8c00;
+}
+
+.btn-danger:hover {
+    background: #c62828;
+}
+
+/* ===============================
+   RESPONSIVE
+================================ */
+@media (max-width: 768px) {
+    form.filter {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    table th, table td {
+        font-size: 13px;
+        padding: 8px 10px;
+    }
+}

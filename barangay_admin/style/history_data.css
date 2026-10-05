@@ -1,0 +1,164 @@
+
+
+        /* =====================================================
+           HISTORY PAGE
+           ===================================================== */
+
+        .history-card {
+
+            border: none;
+
+            border-radius: 12px;
+
+            overflow: hidden;
+
+        }
+
+
+        .history-card .card-header {
+
+            background: #ffffff;
+
+            border-bottom: 1px solid #dee2e6;
+
+            padding: 20px;
+
+        }
+
+
+        .history-title {
+
+            font-weight: 700;
+
+            margin: 0;
+
+        }
+
+
+        .history-subtitle {
+
+            color: #6c757d;
+
+            font-size: 14px;
+
+            margin-top: 4px;
+
+        }
+
+
+        .history-table {
+
+            vertical-align: middle;
+
+        }
+
+
+        .history-table th {
+
+            white-space: nowrap;
+
+        }
+
+
+        .history-table td {
+
+            vertical-align: middle;
+
+        }
+
+
+        .record-description {
+
+            min-width: 300px;
+
+            max-width: 500px;
+
+            white-space: normal;
+
+            line-height: 1.5;
+
+        }
+
+
+        .record-title {
+
+            font-weight: 600;
+
+        }
+
+
+        .person-name {
+
+            font-weight: 500;
+
+        }
+
+
+        .history-id {
+
+            color: #6c757d;
+
+            font-size: 13px;
+
+        }
+
+
+        .filter-label {
+
+            font-size: 13px;
+
+            font-weight: 600;
+
+            margin-bottom: 5px;
+
+        }
+
+
+        .history-count {
+
+            font-size: 14px;
+
+            color: #6c757d;
+
+        }
+
+
+        .pagination {
+
+            margin-bottom: 0;
+
+        }
+
+
+        .empty-history {
+
+            padding: 50px 20px;
+
+            text-align: center;
+
+            color: #6c757d;
+
+        }
+
+
+        .empty-history i {
+
+            font-size: 45px;
+
+            margin-bottom: 15px;
+
+            opacity: .5;
+
+        }
+
+
+        @media(max-width: 768px) {
+
+            .record-description {
+
+                min-width: 220px;
+
+            }
+
+        }
+

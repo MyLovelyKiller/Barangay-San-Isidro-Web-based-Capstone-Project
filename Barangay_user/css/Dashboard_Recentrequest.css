@@ -1,0 +1,246 @@
+/* DASHBOARD CARDS */
+.boxcontainer {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+
+.usercardcontainer {
+  flex: 1;
+  text-decoration: none;
+  min-width: 250px;
+}
+
+.document,
+.tracking,
+.Profile {
+  background: white;
+  padding: 25px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  transition: 0.2s;
+}
+
+.document h3,
+.tracking h3,
+.Profile h3 {
+  color: #3f51b5;
+}
+
+.document p,
+.tracking p,
+.Profile p {
+  color: #000000;
+}
+
+.document:hover,
+.tracking:hover,
+.Profile:hover {
+  transform: translateY(-5px);
+}
+
+/* ICON */
+.icon {
+  width: 50px;
+  height: 50px;
+}
+
+.img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* RECENT REQUEST SECTION */
+.recentrequests {
+  margin-top: 30px;
+  min-height: 450px;
+}
+
+.recentrequests h3 {
+  color: #1e293b;
+  margin-bottom: 20px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.recentrequests .requestcard {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.requestrow {
+  background: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.requestrow:hover {
+  border-color: #3b62d1;
+  box-shadow: 0 4px 12px rgba(59, 98, 209, 0.1);
+}
+
+.requestrow h4 {
+  font-size: 16px;
+  margin: 0;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.requestrow p {
+  font-size: 13px;
+  color: #64748b;
+  margin: 5px 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* STATUS PILLS */
+.status {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.status.pending {
+  background: #ffcc00;
+  color: #000;
+}
+
+.status.complete,
+.status.approved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status.cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+
+/*  RESPONSIVE FIXES */
+@media (max-width: 1366px) {
+  .recentrequests .requestcard {
+    grid-template-columns: repeat(2, 1fr); /* from 3 → 2 */
+  }
+
+  .boxcontainer {
+    gap: 15px;
+  }
+
+  .document,
+  .tracking,
+  .Profile {
+    padding: 20px;
+  }
+
+  .document h3,
+  .tracking h3,
+  .Profile h3 {
+    font-size: 17px;
+  }
+
+  .document p,
+  .tracking p,
+  .Profile p {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .boxcontainer {
+    gap: 15px;
+  }
+
+  .recentrequests .requestcard {
+    grid-template-columns: repeat(2, 1fr); /* keep 2 columns */
+  }
+}
+
+@media (max-width: 992px) {
+  .recentrequests .requestcard {
+    grid-template-columns: 1fr;
+  }
+
+  .boxcontainer {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .document,
+  .tracking,
+  .Profile {
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 20px;
+  }
+
+  .icon {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 768px) {
+  .requestrow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .requestrow h4 {
+    font-size: 15px;
+  }
+
+  .requestrow p {
+    font-size: 12px;
+  }
+
+  .status {
+    font-size: 10px;
+    padding: 5px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .document h3,
+  .tracking h3,
+  .Profile h3 {
+    font-size: 16px;
+  }
+
+  .document p,
+  .tracking p,
+  .Profile p {
+    font-size: 12px;
+  }
+
+  .icon {
+    width: 35px;
+    height: 35px;
+  }
+
+  .requestrow {
+    padding: 15px;
+  }
+}

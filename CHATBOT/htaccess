@@ -1,0 +1,6 @@
+# Prevent config.php from being served directly if someone requests
+# /BMS/CHATBOT/config.php in a browser. It should only ever be loaded
+# server-side via require_once from chatbot.php.
+<Files "config.php">
+    Require all denied
+</Files>

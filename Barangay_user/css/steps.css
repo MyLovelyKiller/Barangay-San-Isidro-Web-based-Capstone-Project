@@ -1,0 +1,167 @@
+/* Modal Overlay Background */
+.form-modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.form-modal-overlay.active {
+  display: flex;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Modal Content Box */
+.form-modal-content {
+  background: #fff;
+  width: 100%;
+  max-width: 650px;
+  border-radius: 12px;
+  padding: 30px;
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.form-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 15px;
+}
+
+.form-modal-header h2 {
+  margin: 0;
+  color: #333;
+  font-size: 1.4em;
+}
+
+.btn-close-form-modal {
+  background: transparent;
+  border: none;
+  font-size: 1.5em;
+  color: #777;
+  cursor: pointer;
+}
+
+.btn-close-form-modal:hover {
+  color: #000;
+}
+
+/* Modal Action Footers */
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 25px;
+  padding-top: 15px;
+  border-top: 1px solid #eee;
+}
+
+/* Main Form Progress Trigger Buttons */
+.section-trigger-container {
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
+  grid-column: 1 / -1;
+}
+
+.payment-selection {
+  display: flex;
+  gap: 20px;
+  margin: 15px 0;
+}
+
+.payment-selection label {
+  cursor: pointer;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#gcash_section {
+  display: none;
+  border: 2px dashed #007bff;
+  padding: 20px;
+  border-radius: 10px;
+  background: #f0f7ff;
+  margin-top: 15px;
+}
+
+.qr-code {
+  width: 180px;
+  height: auto;
+  margin: 10px 0;
+  border: 5px solid #fff;
+}
+
+.grecaptcha-badge {
+  z-index: 1000;
+}
+
+.visually-hidden-trap {
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 0;
+  width: 0;
+  z-index: -1;
+}
+
+.requirements-card {
+  background-color: #f8f9fa;
+  border-left: 4px solid #007bff;
+  padding: 15px;
+  border-radius: 4px;
+}
+
+#requirements_list {
+  padding-left: 20px;
+  margin: 5px 0 0 0;
+  color: #444;
+  font-size: 0.9em;
+}
+
+.sig-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 15px 0;
+  color: #777;
+  font-weight: bold;
+  font-size: 0.85em;
+}
+
+.sig-divider::before,
+.sig-divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid #ccc;
+}
+
+.sig-divider span {
+  padding: 0 10px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

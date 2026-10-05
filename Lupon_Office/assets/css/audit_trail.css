@@ -1,0 +1,208 @@
+/* =====================================================
+   AUDIT TRAIL PAGE
+   Reuses tokens from style.css (--sidebar-dark, badge
+   colors, card/table conventions) rather than introducing
+   a new visual language for what is fundamentally still
+   a records page like cases.php.
+===================================================== */
+
+.audit-search-card {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+}
+
+.audit-search-form {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.audit-search-form input[type="text"] {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    font-size: 0.95rem;
+}
+
+.audit-search-form input[type="text"]:focus {
+    outline: none;
+    border-color: #0a2351;
+    box-shadow: 0 0 0 3px rgba(10, 35, 81, 0.1);
+}
+
+.audit-empty-state {
+    background: #fff;
+    border: 1px dashed #cbd5e1;
+    border-radius: 10px;
+    padding: 30px;
+    text-align: center;
+    color: #7a869a;
+}
+
+/* ---------------------------------------------------
+   CASE HEADER (shown above a single case's timeline)
+--------------------------------------------------- */
+.audit-case-header {
+    background: #fff;
+    border-radius: 10px;
+    border: 2px solid #3ba3ec;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.audit-case-header h3 {
+    margin: 0 0 4px;
+    color: #0a2351;
+    font-size: 1.2rem;
+}
+
+.audit-case-parties {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.audit-case-parties .vs {
+    margin: 0 6px;
+    font-style: italic;
+    color: #a0aec0;
+}
+
+.audit-case-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* ---------------------------------------------------
+   TIMELINE
+--------------------------------------------------- */
+.audit-timeline {
+    list-style: none;
+    margin: 0;
+    padding: 4px 4px 4px 8px;
+    position: relative;
+}
+
+.audit-timeline-item {
+    position: relative;
+    padding-left: 26px;
+    padding-bottom: 22px;
+}
+
+.audit-timeline-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 14px;
+    bottom: -8px;
+    width: 2px;
+    background: #e2e8f0;
+}
+
+.audit-timeline-dot {
+    position: absolute;
+    left: 0;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #0a2351;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #e2e8f0;
+}
+
+.audit-timeline-content {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 14px 16px;
+}
+
+.audit-case-link {
+    display: inline-block;
+    font-weight: 700;
+    color: #0a2351;
+    text-decoration: none;
+    margin-bottom: 4px;
+    font-size: 0.85rem;
+}
+
+.audit-case-link:hover {
+    text-decoration: underline;
+}
+
+.audit-field-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #7a869a;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.audit-value-diff {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.history-arrow {
+    color: #a0aec0;
+    font-size: 0.8rem;
+    margin-top: 3px;
+}
+
+.history-old-value,
+.history-new-value {
+    font-size: 0.88rem;
+    max-height: 4.4em;
+    overflow-y: auto;
+    max-width: 320px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.history-old-value {
+    color: #94a3b8;
+    text-decoration: line-through;
+}
+
+.history-new-value {
+    color: #1a2036;
+    font-weight: 600;
+}
+
+.audit-meta {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+@media (max-width: 640px) {
+    .audit-search-form {
+        flex-wrap: wrap;
+    }
+
+    .audit-search-form input[type="text"] {
+        flex-basis: 100%;
+    }
+
+    .history-old-value,
+    .history-new-value {
+        max-width: 100%;
+    }
+}

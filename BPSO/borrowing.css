@@ -1,0 +1,206 @@
+        body {
+            background: #f4f7fb !important;
+        }
+
+        .main-wrapper {
+            margin-left: 250px;
+            padding: 30px;
+            transition: all 0.3s ease;
+        }
+
+        #sidebar.collapsed ~ .main-wrapper {
+            margin-left: 70px;
+        }
+
+        .header-title {
+            color: #3f51b5;
+            font-weight: 800;
+        }
+
+        .table-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .table thead th {
+            background-color: #3f51b5 !important;
+            color: white !important;
+            text-align: center;
+            border: none;
+        }
+
+        .table td {
+            vertical-align: middle;
+        }
+
+        /* MODAL */
+        .custom-modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .custom-modal.show {
+            display: flex;
+        }
+
+        .custom-modal-content {
+            background: #fff;
+            width: 100%;
+            max-width: 650px;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            animation: fadeInUp 0.25s ease;
+        }
+
+        .custom-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 22px;
+            border-bottom: 1px solid #e5e7eb;
+            background: #f8fafc;
+        }
+
+        .custom-modal-header h2 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .close-btn {
+            font-size: 28px;
+            cursor: pointer;
+            color: #6b7280;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: #111827;
+        }
+
+        .borrow-form {
+            padding: 22px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            font-size: 15px;
+            outline: none;
+            box-sizing: border-box;
+            background: #fff;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 110px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn-cancel,
+        .btn-save {
+            border: none;
+            padding: 12px 22px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            min-width: 140px;
+        }
+
+        .btn-cancel {
+            background: #6b7280;
+            color: #fff;
+        }
+
+        .btn-cancel:hover {
+            background: #4b5563;
+        }
+
+        .btn-save {
+            background: #2563eb;
+            color: #fff;
+        }
+
+        .btn-save:hover {
+            background: #1d4ed8;
+        }
+
+        .status-borrowed {
+            color: #dc3545 !important;
+            font-weight: 600;
+        }
+
+        .status-returned {
+            color: #198754 !important;
+            font-weight: 600;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-wrapper {
+                margin-left: 0 !important;
+                padding: 20px;
+            }
+
+            .custom-modal-content {
+                max-width: 100%;
+            }
+
+            .modal-actions {
+                flex-direction: column;
+            }
+
+            .btn-cancel,
+            .btn-save {
+                width: 100%;
+            }
+        }

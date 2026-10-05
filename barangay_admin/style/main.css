@@ -1,0 +1,27 @@
+body{
+margin:0;
+background:#f4f6f9;
+font-family:Arial;
+}
+
+/* MAIN AREA */
+
+.main-wrapper{
+margin-left:250px;
+transition:0.3s;
+margin-top:80px; 
+}
+
+/* CONTENT */
+
+.content{
+padding:25px;
+}
+
+/* COLLAPSE */
+
+body.sidebar-collapsed .main-wrapper{
+margin-left:70px;
+}
+
+

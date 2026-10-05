@@ -1,0 +1,541 @@
+/* =====================================================
+   CALENDAR MODULE
+   Reuses the color tokens already defined in style.css
+   (--sidebar-dark, --pending-orange, --settled-green, etc.)
+   and the same card/button language used across the app.
+===================================================== */
+
+.calendar-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+    align-items: start;
+}
+
+/* ---------------------------------------------------
+   MAIN CALENDAR CARD
+--------------------------------------------------- */
+.calendar-card {
+    background: #fff;
+    border-radius: 10px;
+    border: 2px solid #3ba3ec;
+    padding: 20px;
+}
+
+.calendar-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.cal-nav {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.cal-nav h3 {
+    margin: 0;
+    min-width: 190px;
+    text-align: center;
+    color: #0a2351;
+    font-size: 1.15rem;
+}
+
+.cal-nav-btn {
+    background: #e0e7ff;
+    color: #0a2351;
+    border: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.cal-nav-btn:hover {
+    background: #0a2351;
+    color: #fff;
+}
+
+.cal-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #7a869a;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-top: 8px;
+}
+
+/* ---------------------------------------------------
+   DAY CELLS
+--------------------------------------------------- */
+.cal-day {
+    min-height: 112px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    cursor: pointer;
+    transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.cal-day:hover {
+    border-color: #3ba3ec;
+    box-shadow: 0 2px 8px rgba(10, 35, 81, 0.08);
+}
+
+.cal-day--outside {
+    background: #f8fafc;
+    opacity: 0.55;
+}
+
+.cal-day--today {
+    border: 2px solid #0a2351;
+    background: #eef3ff;
+}
+
+.cal-day-number {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #334155;
+}
+
+.cal-day--today .cal-day-number {
+    color: #0a2351;
+}
+
+.cal-day-events {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    overflow: hidden;
+}
+
+/* ---------------------------------------------------
+   EVENT CHIPS — left color bar like a case-folder tab
+--------------------------------------------------- */
+.cal-event {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.72rem;
+    line-height: 1.25;
+    background: #f8fafc;
+    border-left: 4px solid var(--evt-color, #0a2351);
+    border-radius: 3px;
+    padding: 3px 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cal-event:hover {
+    background: #eef3ff;
+}
+
+.cal-event-time {
+    font-weight: 700;
+    color: #334155;
+}
+
+.cal-event-title {
+    color: #1a2036;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cal-event--Cancelled {
+    opacity: 0.55;
+    text-decoration: line-through;
+}
+
+.cal-event--Completed .cal-event-title::after {
+    content: " \2713";
+    color: #27ae60;
+    font-weight: 700;
+}
+
+.cal-event--Postponed {
+    border-left-style: dashed;
+}
+
+.cal-day:not(.expanded) .cal-event--extra {
+    display: none;
+}
+
+.cal-more {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #0a2351;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    padding: 0;
+}
+
+/* ---------------------------------------------------
+   SIDE PANEL
+--------------------------------------------------- */
+.calendar-side {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.side-card {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    padding: 18px 20px;
+}
+
+.side-card h3 {
+    margin: 0 0 12px;
+    font-size: 0.95rem;
+    color: #0a2351;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 8px;
+}
+
+.type-legend {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.type-legend li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: #334155;
+}
+
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.upcoming-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 340px;
+    overflow-y: auto;
+}
+
+.upcoming-item {
+    border-left: 4px solid var(--evt-color, #0a2351);
+    background: #f8fafc;
+    border-radius: 4px;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.upcoming-item:hover {
+    background: #eef3ff;
+}
+
+.upcoming-date {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #7a869a;
+    text-transform: uppercase;
+}
+
+.upcoming-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1a2036;
+    margin-top: 2px;
+}
+
+.upcoming-case {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.upcoming-notes {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-style: italic;
+    margin-top: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.empty-note {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+/* ---------------------------------------------------
+   MODAL
+--------------------------------------------------- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 35, 81, 0.45);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 16px;
+    overflow-y: auto;
+    z-index: 2000;
+}
+
+.modal-overlay[hidden] {
+    display: none;
+}
+
+.modal-box {
+    background: #fff;
+    border-radius: 10px;
+    max-width: 560px;
+    width: 100%;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 24px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #0a2351;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    color: #7a869a;
+}
+
+.modal-form {
+    padding: 20px 24px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.form-row {
+    display: flex;
+    gap: 14px;
+}
+
+.form-row .form-group {
+    flex: 1;
+    min-width: 0;
+}
+
+.modal-form label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 5px;
+}
+
+.modal-form input[type="text"],
+.modal-form input[type="date"],
+.modal-form input[type="time"],
+.modal-form select,
+.modal-form textarea {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.modal-form input:focus,
+.modal-form select:focus,
+.modal-form textarea:focus {
+    outline: none;
+    border-color: #0a2351;
+    box-shadow: 0 0 0 3px rgba(10, 35, 81, 0.1);
+}
+
+.case-link-group {
+    position: relative;
+}
+
+.case-search-results {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 4px;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 10;
+}
+
+.case-search-results li {
+    padding: 8px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.case-search-results li:hover {
+    background: #eef3ff;
+}
+
+.case-search-results .case-result-no {
+    font-weight: 700;
+    color: #0a2351;
+}
+
+.case-search-results .case-result-parties {
+    color: #64748b;
+    font-size: 0.78rem;
+}
+
+.linked-case-chip {
+    margin-top: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #eef3ff;
+    color: #0a2351;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 20px;
+}
+
+.linked-case-chip button {
+    background: none;
+    border: none;
+    color: #0a2351;
+    cursor: pointer;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.form-error {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 10px 12px;
+    border-radius: 5px;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 6px;
+}
+
+.modal-actions-right {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.btn-cancel.danger {
+    background-color: #e74c3c;
+    color: #fff;
+}
+
+.btn-cancel.danger:hover {
+    background-color: #c0392b;
+}
+
+/* =====================================================
+   RESPONSIVE: month grid -> single-column agenda.
+   Rather than just shrinking the 7-column grid until it's
+   unreadable, the layout genuinely restructures: filler
+   cells from adjacent months disappear and each remaining
+   day becomes a full-width agenda row.
+===================================================== */
+@media (max-width: 900px) {
+    .calendar-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .cal-weekdays {
+        display: none;
+    }
+
+    .cal-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cal-day--outside {
+        display: none;
+    }
+
+    .cal-day {
+        min-height: 0;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 10px 12px;
+    }
+
+    .cal-day-number {
+        min-width: 28px;
+    }
+
+    .cal-day-events {
+        flex: 1;
+    }
+
+    .form-row {
+        flex-direction: column;
+        gap: 14px;
+    }
+}

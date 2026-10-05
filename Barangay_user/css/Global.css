@@ -1,0 +1,139 @@
+/* GLOBAL STYLES */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.container {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.maincontent {
+  margin-left: 250px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: all 0.3s ease;
+  background: #f4f7fb;
+  width: calc(100% - 250px);
+}
+
+.contentwrapper {
+  flex: 1;
+  padding: 30px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* HEADINGS */
+h1 {
+  color: #3f51b5;
+  font-size: 36px;
+}
+
+h2 {
+  color: #3f51b5;
+  margin-bottom: 30px;
+}
+
+/* POPUP NOTIFICATION */
+.statuspopup {
+  position: fixed;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #3b62d1;
+  color: white;
+  padding: 15px 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: top 0.5s ease-in-out;
+}
+
+.statuspopup.show {
+  top: 25px;
+}
+
+/*  RESPONSIVE FIXES */
+
+/* 🔹 SMALL LAPTOP / MACBOOK FIX (NEW ADDITION) */
+@media (max-width: 1366px) {
+  .maincontent {
+    margin-left: 220px; /* slightly smaller sidebar space */
+    width: calc(100% - 220px);
+  }
+
+  .contentwrapper {
+    padding: 25px;
+  }
+
+  h1 {
+    font-size: 32px;
+  }
+
+  h2 {
+    font-size: 24px;
+  }
+}
+
+/* 🔹 MEDIUM LAPTOP */
+@media (max-width: 1024px) {
+  /* Reduce sidebar space on medium screens */
+  .maincontent {
+    margin-left: 200px;
+    width: calc(100% - 200px);
+  }
+
+  .contentwrapper {
+    padding: 20px;
+  }
+}
+
+/* 🔹 TABLET (still usable but not your focus) */
+@media (max-width: 768px) {
+  /* Mobile: collapse sidebar fully */
+  .maincontent {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .contentwrapper {
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 28px;
+  }
+
+  h2 {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 480px) {
+  .contentwrapper {
+    padding: 15px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  h2 {
+    font-size: 20px;
+  }
+
+  .statuspopup {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+}

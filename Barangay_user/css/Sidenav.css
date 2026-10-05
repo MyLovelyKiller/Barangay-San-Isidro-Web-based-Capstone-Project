@@ -1,0 +1,206 @@
+/* =========================================================
+   BARANGAY MANAGEMENT SYSTEM - FINAL RESPONSIVE SIDEBAR
+   ========================================================= */
+
+/* SIDEBAR BASE (DESKTOP) */
+.sidebar {
+  width: 250px;
+  background: #3f51b5;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  overflow: visible !important;
+}
+
+/* MAIN CONTENT DEFAULT PUSH (EXPANDED) */
+.maincontent {
+  margin-left: 250px;
+  width: calc(100% - 250px);
+  transition: all 0.3s ease;
+}
+
+/* MAIN CONTENT PUSH (COLLAPSED) */
+.sidebar.collapsed + .maincontent {
+  margin-left: 70px;
+  width: calc(100% - 70px);
+}
+
+/* SIDEBAR HEADER */
+.sidebar-header {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  position: relative; /* Ensures absolute children anchor properly */
+}
+
+/* BURGER BUTTON (Sits on the outer right border cleanly in both states) */
+.burgertab {
+  position: absolute !important;
+  top: 15px !important;
+  right: -18px !important; /* Perfect half-in, half-out edge placement */
+  width: 36px !important;
+  height: 36px !important;
+  background: #ffffff !important;
+  border: 2px solid #3f51b5 !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25) !important;
+  cursor: pointer !important;
+  z-index: 99999 !important;
+  pointer-events: auto !important;
+  transition: 0.3s ease;
+}
+
+.burgertab i {
+  color: #3f51b5 !important;
+  font-size: 18px !important;
+  margin-left: 0 !important;
+}
+
+/* LOGO */
+.logosidebar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.logosidebar img {
+  width: 80px;
+  height: auto;
+  transition: all 0.3s ease;
+}
+
+/* COLLAPSED STATES */
+.sidebar.collapsed {
+  width: 70px;
+}
+
+.sidebar.collapsed .sidebar-header {
+  padding: 15px 5px;
+}
+
+.sidebar.collapsed .logosidebar img {
+  width: 38px;
+}
+
+.sidebar.collapsed .navlinks span {
+  display: none;
+}
+
+/* NAVIGATION LINKS */
+.navlinks {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.navlinks a {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px 25px;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
+  font-size: 14px;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.navlinks a.active {
+  background: #007bff;
+  color: white;
+  border-left: none;
+}
+
+.navlinks a:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+/* =========================================================
+   RESPONSIVE BREAKPOINTS
+   ========================================================= */
+
+/* 🔹 SMALL LAPTOP / MACBOOK */
+@media (max-width: 1366px) {
+  .sidebar {
+    width: 220px;
+  }
+  .maincontent {
+    margin-left: 220px;
+    width: calc(100% - 220px);
+  }
+  .sidebar.collapsed {
+    width: 65px;
+  }
+  .sidebar.collapsed + .maincontent {
+    margin-left: 65px;
+    width: calc(100% - 65px);
+  }
+  .logosidebar img {
+    width: 70px;
+  }
+  .navlinks a {
+    padding: 12px 20px;
+    font-size: 13px;
+  }
+}
+
+/* 🔹 TABLET VIEW */
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 200px;
+  }
+  .maincontent {
+    margin-left: 200px;
+    width: calc(100% - 200px);
+  }
+  .sidebar.collapsed + .maincontent {
+    margin-left: 65px;
+    width: calc(100% - 65px);
+  }
+}
+
+/* 🔹 MOBILE PHONES (Hidden drawer behavior) */
+@media (max-width: 768px) {
+  .sidebar {
+    left: -250px;
+    width: 250px;
+  }
+
+  .sidebar.active {
+    left: 0;
+  }
+
+  .maincontent {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Floating toggle button when sidebar is tucked away on mobile */
+  .sidebar:not(.active) .burgertab {
+    position: fixed !important;
+    top: 15px !important;
+    left: 15px !important;
+    right: auto !important;
+    background: #3f51b5 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .sidebar:not(.active) .burgertab i {
+    color: white !important;
+  }
+}

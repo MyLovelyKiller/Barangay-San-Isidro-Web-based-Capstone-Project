@@ -1,0 +1,151 @@
+/* RESET & BASE */
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* MAIN SIDEBAR CONTAINER */
+.sidebar {
+  width: 200px;
+  height: 100vh;
+  background: #3f51b5;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  transition: width 0.3s ease;
+  overflow: visible;
+}
+
+/* COLLAPSED STATE */
+.sidebar.collapsed {
+  width: 70px;
+}
+
+/* FLOATING TOGGLE BUTTON */
+.burgertab {
+  position: absolute;
+  top: 15px;
+  right: -18px;
+  width: 36px;
+  height: 36px;
+  background: #ffffff;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  z-index: 1001;
+}
+
+.burgertab i {
+  color: #2c3e50;
+  font-size: 18px;
+  /* margin-left removed to ensure perfect center */
+}
+
+/* HEADER & LOGO */
+.sidebar-header {
+  padding: 20px 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.logosidebar img {
+  width: 110px;
+  height: auto;
+  transition: width 0.3s ease;
+}
+
+.sidebar-header h2 {
+  font-size: 18px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* NAVIGATION LINKS */
+.navlinks {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.navlinks a {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px 25px;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.navlinks a:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.navlinks a.active {
+  background: #1abc9c;
+  color: white;
+}
+
+/* COLLAPSED OVERRIDES (The Fix) */
+
+/* 1. Hide text */
+.sidebar.collapsed .navlinks span,
+.sidebar.collapsed .sidebar-header h2 {
+  display: none;
+}
+
+/* 2. Center the link container */
+.sidebar.collapsed .navlinks a {
+  justify-content: center;
+  padding: 15px 0; /* Removes the 25px left-side bias */
+  gap: 0;          /* Removes space for hidden text */
+}
+
+/* 3. Force icon to be the center point */
+.sidebar.collapsed .navlinks a i {
+  margin: 0;
+  font-size: 20px;
+  width: 100%;     /* Takes up full width to allow text-align */
+  text-align: center;
+}
+
+/* 4. Shrink Logo */
+.sidebar.collapsed .logosidebar img {
+  width: 40px;
+}
+
+/* CONTENT ADJUSTMENT (Update .main to match your dashboard) */
+.main {
+  margin-left: 250px;
+  transition: margin-left 0.3s ease;
+  padding: 20px;
+}
+
+.sidebar.collapsed ~ .main {
+  margin-left: 70px;
+}
+
+.content {
+   
+  transition: margin-left 0.3s ease;
+  padding: 20px;
+  
+}
+
+.sidebar.collapsed ~ .content {
+  margin-left: 70px;
+  width: calc(100% - 70px);
+}

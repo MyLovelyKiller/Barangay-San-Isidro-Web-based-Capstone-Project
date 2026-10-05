@@ -1,0 +1,362 @@
+.profileheader {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  padding: 10px 0;
+}
+
+.avatarcontainer .avatar-wrapper {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid #ffffff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.userheadline {
+  flex-grow: 1;
+}
+
+.userheadline h2 {
+  margin: 0;
+  font-size: 28px;
+  color: #1e293b;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.userheadline p {
+  margin: 5px 0 0 0;
+  color: #64748b;
+  font-size: 16px;
+}
+
+.btneditprofile {
+  background: #3b62d1;
+  color: white;
+  padding: 10px 25px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  transition: background 0.3s ease;
+}
+
+.btneditprofile:hover {
+  background: #2d4eb3;
+}
+
+/*PROFILE STYLES */
+
+.profilebg {
+  background-color: #f4f7fb;
+  min-height: 100vh;
+}
+
+.profiletitle {
+  color: #3b62d1;
+  margin-bottom: 25px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.profilecard,
+.detailssection {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 30px;
+  border-radius: 15px;
+  margin-bottom: 25px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.infotext {
+  font-size: 15px;
+  color: #334155;
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+
+/*EDIT PROFILE */
+
+.profilepicsection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 30px;
+  padding: 25px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
+}
+
+.avatar-wrapper {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid #ffffff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  background-color: #e2e8f0;
+}
+
+.profilepic {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/*FORM LAYOUT*/
+
+.formsection {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+.profileform label,
+.detailssection label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #3b62d1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.profileform input,
+.profileform select,
+.profileform textarea {
+  width: 100%;
+  padding: 12px 15px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  font-size: 14px;
+  background-color: #ffffff;
+}
+
+.profileform input:focus {
+  border-color: #3b62d1;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 98, 209, 0.1);
+}
+
+.profileactions {
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.btnsubmit {
+  background: #3b62d1;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.avabtnsubmit {
+  background: #a8bfff;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btncancel {
+  background: #f1f5f9;
+  color: #64748b;
+  padding: 12px 30px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* FORM GROUPS */
+.formgroup {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* PROFILE ACTIONS BUTTONS */
+.profileactions {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+  justify-content: flex-end;
+}
+
+.btnsubmit {
+  background-color: #3f51b5;
+  color: #fff;
+  padding: 12px 30px;
+  border-radius: 25px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btnsubmit:hover {
+  background-color: #004080;
+}
+
+.btncancel {
+  background-color: #ccc;
+  color: #333;
+  padding: 12px 30px;
+  border-radius: 25px;
+  text-decoration: none;
+  font-weight: bold;
+  text-align: center;
+  display: inline-block;
+}
+
+/* PASSWORD SECTION */
+.passwordsection {
+  margin-top: 40px;
+  padding-top: 25px;
+  border-top: 2px solid #f4f7f9;
+}
+
+.passwordsection h3 {
+  color: #003366;
+  margin-bottom: 5px;
+}
+
+.formhint {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.passwordsection .formsection {
+  margin-top: 10px;
+  gap: 20px;
+}
+
+.passwordsection input[type="password"] {
+  background-color: #fafafa;
+  width: 100%;
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+/*  RESPONSIVE FIXES */
+@media (max-width: 1366px) {
+  .profileheader {
+    gap: 20px;
+  }
+
+  .avatarcontainer .avatar-wrapper {
+    width: 100px;
+    height: 100px;
+  }
+
+  .userheadline h2 {
+    font-size: 24px;
+  }
+
+  .userheadline p {
+    font-size: 14px;
+  }
+
+  .btneditprofile {
+    padding: 8px 18px;
+    font-size: 13px;
+  }
+
+  .profilecard,
+  .detailssection {
+    padding: 25px;
+  }
+
+  .formsection {
+    gap: 20px;
+  }
+
+  .profileform input,
+  .profileform select,
+  .profileform textarea {
+    font-size: 13px;
+    padding: 11px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .formsection {
+    grid-template-columns: 1fr;
+  }
+
+  .profileactions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 768px) {
+  /* HEADER */
+  .profileheader {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 15px;
+  }
+
+  .avatarcontainer .avatar-wrapper {
+    width: 90px;
+    height: 90px;
+  }
+
+  .userheadline h2 {
+    font-size: 22px;
+  }
+
+  .userheadline p {
+    font-size: 14px;
+  }
+
+  .btneditprofile {
+    padding: 8px 15px;
+    font-size: 12px;
+  }
+
+  /* FORM GRID STACK */
+  .formsection {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  /* CARDS */
+  .profilecard,
+  .detailssection {
+    padding: 20px;
+  }
+
+  /* BUTTONS FULL WIDTH */
+  .profileactions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btnsubmit,
+  .btncancel,
+  .avabtnsubmit {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* PROFILE PIC SECTION */
+  .profilepicsection {
+    padding: 15px;
+  }
+}

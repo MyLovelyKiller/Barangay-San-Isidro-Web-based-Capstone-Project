@@ -1,0 +1,95 @@
+/* MODAL STYLES FOR POPUP */
+.captcha-modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6); /* Slightly darker for better focus */
+  animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+  background-color: #fff;
+  margin: 10% auto; /* Adjusted margin to fit the larger grid */
+  padding: 25px;
+  border-radius: 12px;
+  width: 350px; /* Slightly wider to accommodate 3 columns */
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+
+.close-modal {
+  position: absolute;
+  right: 15px;
+  top: 10px;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+  transition: color 0.2s;
+}
+
+.close-modal:hover {
+  color: #333;
+}
+
+/* NEW: CAPTCHA GRID STYLES */
+#captcha-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3 equal columns */
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.captcha-icon-box {
+  padding: 15px;
+  border: 2px solid #eee;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.8rem;
+  color: #444;
+  background-color: #fafafa;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.captcha-icon-box:hover {
+  background-color: #f0f7ff;
+  border-color: #007bff;
+  transform: translateY(-2px);
+}
+
+/* State when user clicks an icon */
+.captcha-icon-box.selected {
+  background-color: #e8f5e9;
+  border-color: #28a745;
+  color: #28a745;
+  box-shadow: 0 0 10px rgba(40, 167, 69, 0.2);
+}
+
+#captcha-instruction {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-top: 10px;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Ensure FontAwesome icons size correctly */
+.captcha-icon-box i {
+  pointer-events: none; /* Prevents clicking the <i> directly instead of the div */
+}
