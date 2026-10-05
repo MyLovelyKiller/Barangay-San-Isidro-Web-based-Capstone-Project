@@ -1,1 +1,2 @@
-<?php $host = "localhost"; $user = "root"; $pass = ""; $db = "barangay_db"; $conn = mysqli_connect( $host, $user, $pass, $db ); if (!$conn) { error_log("BPSO database connection failed: " . mysqli_connect_error()); die("Database connection failed."); } /* Use UTF-8 for database communication */ if (!mysqli_set_charset($conn, "utf8mb4")) { error_log("Failed to set database character set: " . mysqli_error($conn)); die("Database configuration error."); } ?>
+<?php
+require_once __DIR__ . '/../BACKEND/db_connect.php';

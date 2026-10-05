@@ -39,8 +39,7 @@ function scanFileWithClamAV($filePath, &$scanMessage = null)
      * Change this path if your ClamAV installation
      * is located somewhere else.
      */
-    $clamScanPath =
-        'C:\Users\Gary\Downloads\clamav-1.5.4.win.x64\clamav-1.5.4.win.x64\clamscan.exe';
+    $clamScanPath = getenv('BMS_CLAMSCAN_PATH') ?: '';
 
     if (!is_file($clamScanPath)) {
         $scanMessage = 'ClamAV scanner was not found.';
@@ -59,7 +58,7 @@ function scanFileWithClamAV($filePath, &$scanMessage = null)
 
     $command =
         escapeshellarg($clamScanPath) .
-        ' --no-summary ' .
+        ' --no-summary --max-filesize=20M --max-scansize=100M ' .
         escapeshellarg($filePath);
 
     $output = [];
@@ -146,7 +145,7 @@ if (
        Directories
        --------------------------------------------------------- */
 
-    $upload_dir = '../IMAGES/';
+    $upload_dir = '../uploads/profile_pictures/';
     $quarantine_dir = '../UPLOADS/quarantine/';
 
     if (!is_dir($upload_dir)) {
@@ -275,7 +274,7 @@ if (
      * profile_15_a82f91c3.png
      *
      * profile.php can then use:
-     * ../IMAGES/<filename>
+     * ../uploads/profile_pictures/<filename>
      */
     $picture_profile = $file_name;
 
@@ -401,10 +400,14 @@ if ($stmt->execute()) {
 
             $old_filename = basename($old_picture);
 
-            $possible_old_path = '../IMAGES/' . $old_filename;
-
-            if (file_exists($possible_old_path)) {
-                $old_file_path = $possible_old_path;
+            foreach ([
+                '../uploads/profile_pictures/' . $old_filename,
+                '../IMAGES/' . $old_filename,
+            ] as $possible_old_path) {
+                if (file_exists($possible_old_path)) {
+                    $old_file_path = $possible_old_path;
+                    break;
+                }
             }
         }
 

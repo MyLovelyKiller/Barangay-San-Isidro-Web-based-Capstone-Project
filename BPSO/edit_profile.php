@@ -1,5 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . '/../BACKEND/security_helpers.php';
+bms_start_secure_session();
+bms_send_security_headers();
 require_once '../BACKEND/db_connect.php'; // Primary DB (BMS)
 
 /* =========================================================
@@ -24,35 +26,83 @@ $message = "";
 
 // 2. Handle POST Request
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $name    = $_POST['name'];
-    $username = $_POST['username'];
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (
+        !is_string($submittedToken) ||
+        !hash_equals($_SESSION['csrf_token'], $submittedToken)
+    ) {
+        http_response_code(403);
+        exit('Invalid CSRF token.');
+    }
+
+    $name = trim((string)($_POST['name'] ?? ''));
+    $username = trim((string)($_POST['username'] ?? ''));
+    if ($name === '' || strlen($username) < 4 || strlen($username) > 50
+        || !preg_match('/^[A-Za-z0-9_.-]+$/', $username)
+    ) {
+        http_response_code(400);
+        exit('Invalid profile details.');
+    }
     // Add other fields here if they exist in your 'officials' table (e.g., email, contact)
 
     $upload_ok = true;
     $new_filename = "";
+    $stmt = null;
 
     // Handle Image Upload
-    if (!empty($_FILES['profile_pic']['name'])) {
-        $target_dir = "../IMAGES/";
-        $file_extension = strtolower(pathinfo($_FILES["profile_pic"]["name"], PATHINFO_EXTENSION));
-        $new_filename = "profile_" . $official_id . "_" . time() . "." . $file_extension;
-        $target_file = $target_dir . $new_filename;
-
-        // Check if image file is actual image
-        $check = getimagesize($_FILES["profile_pic"]["tmp_name"]);
-        if($check !== false) {
-            if (move_uploaded_file($_FILES["profile_pic"]["tmp_name"], $target_file)) {
-                // Update with image
-                $sql = "UPDATE officials SET name=?, username=?, picture_profile=? WHERE official_id=?";
-                $stmt = $conn->prepare($sql);
-                $stmt->bind_param("sssi", $name, $username, $new_filename, $official_id);
-            } else {
-                $message = "Failed to upload image.";
+    if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $file = $_FILES['profile_pic'];
+        $maxSize = 5 * 1024 * 1024;
+        $mimeExtensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif'];
+        $mime = false;
+        if ($file['error'] !== UPLOAD_ERR_OK || $file['size'] <= 0 || $file['size'] > $maxSize) {
+            $message = "Profile image must be valid and no larger than 5 MB.";
+            $upload_ok = false;
+        } else {
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $mime = $finfo->file($file['tmp_name']);
+            if (!isset($mimeExtensions[$mime]) || @getimagesize($file['tmp_name']) === false) {
+                $message = "Invalid profile image.";
                 $upload_ok = false;
             }
-        } else {
-            $message = "File is not an image.";
-            $upload_ok = false;
+        }
+
+        if ($upload_ok) {
+            $quarantineDir = __DIR__ . '/../uploads/quarantine';
+            if (!is_dir($quarantineDir) && !mkdir($quarantineDir, 0700, true) && !is_dir($quarantineDir)) {
+                $message = "Upload storage is unavailable.";
+                $upload_ok = false;
+            }
+            $quarantinePath = $upload_ok
+                ? $quarantineDir . DIRECTORY_SEPARATOR . bin2hex(random_bytes(16)) . '.' . $mimeExtensions[$mime]
+                : '';
+            if ($upload_ok && !move_uploaded_file($file['tmp_name'], $quarantinePath)) {
+                $message = "Failed to save profile image.";
+                $upload_ok = false;
+            }
+            if ($upload_ok) {
+                $scanMessage = '';
+                if (!bms_scan_file_with_clamav($quarantinePath, $scanMessage)) {
+                    unlink($quarantinePath);
+                    $message = $scanMessage;
+                    $upload_ok = false;
+                }
+            }
+            if ($upload_ok) {
+                $new_filename = "profile_" . (int)$official_id . "_" . bin2hex(random_bytes(8)) . "." . $mimeExtensions[$mime];
+                $target_file = __DIR__ . '/../uploads/profile_pictures/' . $new_filename;
+                if (!rename($quarantinePath, $target_file)) {
+                    unlink($quarantinePath);
+                    $message = "Failed to finalize profile image.";
+                    $upload_ok = false;
+                }
+            }
+        }
+
+        if ($upload_ok) {
+            $sql = "UPDATE officials SET name=?, username=?, picture_profile=? WHERE official_id=?";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("sssi", $name, $username, $new_filename, $official_id);
         }
     } else {
         // Update without changing image
@@ -61,11 +111,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt->bind_param("ssi", $name, $username, $official_id);
     }
 
-    if ($upload_ok && $stmt->execute()) {
+    if ($upload_ok && $stmt !== null && $stmt->execute()) {
         echo "<script>alert('Profile updated successfully!'); window.location.href='profile.php';</script>";
         exit;
     } else {
-        $message = "Error updating profile: " . $conn->error;
+        if ($upload_ok) {
+            $message = "Unable to update profile.";
+            error_log('BPSO profile update failed: ' . $conn->error);
+        }
     }
 }
 
@@ -77,7 +130,14 @@ $stmt->execute();
 $result = $stmt->get_result();
 $officer = $result->fetch_assoc();
 
-$profile_picture = (!empty($officer['picture_profile'])) ? "../IMAGES/" . $officer['picture_profile'] : "../IMAGES/default-avatar.png";
+$profileFilename = basename((string)($officer['picture_profile'] ?? ''));
+$profileStoragePath = __DIR__ . '/../uploads/profile_pictures/' . $profileFilename;
+$legacyProfilePath = __DIR__ . '/../IMAGES/' . $profileFilename;
+$profile_picture = $profileFilename !== '' && is_file($profileStoragePath)
+    ? "../uploads/profile_pictures/" . rawurlencode($profileFilename)
+    : ($profileFilename !== '' && is_file($legacyProfilePath)
+        ? "../IMAGES/" . rawurlencode($profileFilename)
+        : "../IMAGES/default-avatar.png");
 ?>
 
 <!DOCTYPE html>

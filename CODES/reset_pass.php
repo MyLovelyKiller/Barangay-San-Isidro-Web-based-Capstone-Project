@@ -1,5 +1,9 @@
 <?php
-session_start();
+require_once __DIR__ . '/../BACKEND/security_helpers.php';
+bms_start_secure_session();
+bms_send_security_headers();
+header('Cache-Control: no-store, private');
+header('Referrer-Policy: no-referrer');
 
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(
@@ -51,7 +55,7 @@ $token = $_GET['token'] ?? '';
                         ); ?>"
                     >
 
-                    <input type="hidden" name="token" value="<?php echo htmlspecialchars($token); ?>">
+                    <input type="hidden" name="token" value="<?php echo htmlspecialchars($token, ENT_QUOTES, 'UTF-8'); ?>">
 
                     <div class="form-group">
 							<label for="password">Password</label>

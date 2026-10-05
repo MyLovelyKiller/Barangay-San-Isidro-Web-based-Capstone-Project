@@ -1,5 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . '/../BACKEND/security_helpers.php';
+bms_start_secure_session();
+bms_send_security_headers();
 
 /* =========================================================
    CSRF TOKEN

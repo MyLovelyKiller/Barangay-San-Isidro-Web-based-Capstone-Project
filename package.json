@@ -1,0 +1,10 @@
+{
+  "name": "barangay-san-isidro-bms",
+  "private": true,
+  "scripts": {
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1"
+  }
+}

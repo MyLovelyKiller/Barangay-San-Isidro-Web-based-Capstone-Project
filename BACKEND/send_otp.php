@@ -1,18 +1,19 @@
 <?php
-error_reporting(0);
-session_start();
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
-require __DIR__ . '/../PHPMailer/src/Exception.php';
-require __DIR__ . '/../PHPMailer/src/PHPMailer.php';
-require __DIR__ . '/../PHPMailer/src/SMTP.php';
+require_once __DIR__ . '/security_helpers.php';
+bms_start_secure_session();
+bms_send_security_headers();
 
 header('Content-Type: application/json');
 
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+    http_response_code(405);
     echo json_encode(["success" => false, "message" => "Invalid Request."]);
+    exit();
+}
+
+if (!bms_rate_limit('registration-otp', 5, 3600)) {
+    http_response_code(429);
+    echo json_encode(["success" => false, "message" => "Too many attempts. Please try again later."]);
     exit();
 }
 
@@ -21,6 +22,7 @@ $csrfToken = $_POST['csrf_token'] ?? '';
 
 if (
     empty($csrfToken) ||
+    !is_string($csrfToken) ||
     empty($_SESSION['csrf_token']) ||
     !hash_equals($_SESSION['csrf_token'], $csrfToken)
 ) {
@@ -34,11 +36,44 @@ if (!empty($_POST['bms_reg_v_field'])) {
     exit();
 }
 
-/* ---------- Basic data ---------- */
-$email = filter_var($_POST['email'] ?? '', FILTER_VALIDATE_EMAIL);
-$name = trim($_POST['name'] ?? '');
+if (!bms_verify_recaptcha(trim((string)($_POST['g-recaptcha-response'] ?? '')), 'register')) {
+    http_response_code(400);
+    echo json_encode(["success" => false, "message" => "Security verification failed. Please try again."]);
+    exit();
+}
 
-if (!$email || $name === '') {
+/* ---------- Basic data ---------- */
+$emailInput = $_POST['email'] ?? '';
+$nameInput = $_POST['name'] ?? '';
+$passwordInput = $_POST['password'] ?? '';
+$confirmPasswordInput = $_POST['confirm_password'] ?? '';
+$accountTypeInput = $_POST['account_type'] ?? '';
+$usernameInput = $_POST['username'] ?? '';
+$departmentInput = $_POST['department'] ?? '';
+$email = is_string($emailInput) ? filter_var($emailInput, FILTER_VALIDATE_EMAIL) : false;
+$name = is_string($nameInput) ? trim($nameInput) : '';
+$password = is_string($passwordInput) ? $passwordInput : '';
+$confirmPassword = is_string($confirmPasswordInput) ? $confirmPasswordInput : '';
+$accountType = is_string($accountTypeInput) ? strtolower(trim($accountTypeInput)) : '';
+$username = is_string($usernameInput) ? trim($usernameInput) : '';
+$department = is_string($departmentInput) ? strtoupper(trim($departmentInput)) : '';
+$satelliteId = filter_var($_POST['satellite_id'] ?? null, FILTER_VALIDATE_INT);
+
+if (
+    !$email ||
+    $name === '' ||
+    strlen($name) > 150 ||
+    !in_array($accountType, ['resident', 'official'], true) ||
+    strlen($username) < 4 ||
+    strlen($username) > 50 ||
+    !preg_match('/^[A-Za-z0-9_.-]+$/', $username) ||
+    $satelliteId === false ||
+    $satelliteId === null ||
+    $satelliteId <= 0 ||
+    ($accountType === 'official' && !in_array($department, ['ADMIN', 'BPSO', 'CLEARANCE', 'LUPON'], true)) ||
+    !bms_password_is_strong($password) ||
+    !hash_equals($password, $confirmPassword)
+) {
     echo json_encode(["success" => false, "message" => "Please provide valid registration details."]);
     exit();
 }
@@ -72,6 +107,13 @@ if (!isset($allowed[$extension])) {
 }
 
 /* ---------- Validate actual file content ---------- */
+$finfo = new finfo(FILEINFO_MIME_TYPE);
+$detectedMime = $finfo->file($file['tmp_name']);
+if ($detectedMime !== $allowed[$extension]) {
+    echo json_encode(["success" => false, "message" => "File content does not match its extension."]);
+    exit();
+}
+
 if ($extension !== 'pdf') {
     if (@getimagesize($file['tmp_name']) === false) {
         echo json_encode(["success" => false, "message" => "Invalid image file."]);
@@ -105,33 +147,10 @@ if (!move_uploaded_file($file['tmp_name'], $quarantine_path)) {
 }
 
 /* ---------- ClamAV ---------- */
-$clamScanPath =
-    'C:\Users\Gary\Downloads\clamav-1.5.4.win.x64\clamav-1.5.4.win.x64\clamscan.exe';
-
-if (!is_file($clamScanPath) || !function_exists('exec')) {
+$scanMessage = '';
+if (!bms_scan_file_with_clamav($quarantine_path, $scanMessage)) {
     unlink($quarantine_path);
-    echo json_encode(["success" => false, "message" => "File security scanner is unavailable."]);
-    exit();
-}
-
-$output = [];
-$exitCode = -1;
-
-$command =
-    escapeshellarg($clamScanPath) .
-    ' --no-summary ' .
-    escapeshellarg($quarantine_path);
-
-exec($command, $output, $exitCode);
-
-if ($exitCode !== 0) {
-    unlink($quarantine_path);
-
-    $message = ($exitCode === 1)
-        ? "Uploaded file was detected as infected."
-        : "File security scan failed.";
-
-    echo json_encode(["success" => false, "message" => $message]);
+    echo json_encode(["success" => false, "message" => $scanMessage]);
     exit();
 }
 
@@ -158,45 +177,20 @@ $_SESSION['temp_user_data'] = $_POST;
 $_SESSION['temp_file_name'] = $new_file_name;
 $_SESSION['temp_file_path'] = $quarantine_path;
 $_SESSION['otp'] = $otp;
+$_SESSION['otp_created_at'] = time();
+$_SESSION['otp_attempts'] = 0;
 $_SESSION['registration_security_verified'] = true;
 
 /* ---------- SEND OTP ---------- */
-$mail = new PHPMailer(true);
-
 try {
-    $mail->isSMTP();
-    $mail->SMTPDebug = 0;
-    $mail->Host = 'smtp.gmail.com';
-    $mail->SMTPAuth = true;
-
-    $mail->Username = 'christianmorales602@gmail.com';
-    $mail->Password = 'flfnjwrbavgelzgu';
-
-    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-    $mail->Port = 587;
-
-    $mail->SMTPOptions = [
-        'ssl' => [
-            'verify_peer' => true,
-            'verify_peer_name' => true,
-            'allow_self_signed' => false
-        ]
-    ];
-
-    $mail->setFrom('christianmorales602@gmail.com', 'Barangay San Isidro');
-    $mail->addAddress($email, $name);
-    $mail->isHTML(true);
-    $mail->Subject = 'Verify Your Registration';
-
     $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
-
-    $mail->Body =
+    $html =
         "Hello <b>{$safeName}</b>,<br><br>" .
         "Your verification code for Barangay San Isidro is: " .
         "<h2>{$otp}</h2><br>" .
         "Please do not share this code.";
 
-    $mail->send();
+    bms_send_email($email, 'Verify Your Registration', $html);
 
     echo json_encode([
         "success" => true,
@@ -204,7 +198,7 @@ try {
     ]);
     exit();
 
-} catch (Exception $e) {
+} catch (RuntimeException $e) {
 
     if (file_exists($quarantine_path)) {
         unlink($quarantine_path);
@@ -215,6 +209,8 @@ try {
         $_SESSION['temp_file_name'],
         $_SESSION['temp_file_path'],
         $_SESSION['otp'],
+        $_SESSION['otp_created_at'],
+        $_SESSION['otp_attempts'],
         $_SESSION['registration_security_verified']
     );
 

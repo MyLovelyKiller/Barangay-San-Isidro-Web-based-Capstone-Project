@@ -95,7 +95,7 @@ $status_stmt->close();
 $decrypted_id = "N/A"; 
 
 if (!empty($officer['id_number'])) {
-    $decrypted_id = openssl_decrypt($officer['id_number'], $ciphering, $encryption_key, 0, $encryption_iv);
+    $decrypted_id = bms_decrypt_profile_id($officer['id_number']);
     
     // Fallback if decryption fails (e.g., wrong key or corrupted data)
     if ($decrypted_id === false) {
@@ -103,14 +103,15 @@ if (!empty($officer['id_number'])) {
     }
 }
 
-// The filesystem check and the <img> URL are two different kinds of
-// path and must be built separately now that this page lives one
-// folder deeper than before: __DIR__ for what PHP reads off disk,
-// /BMS/IMAGES for what the browser requests.
-$profile_picture_exists = !empty($officer['picture_profile'])
-    && file_exists(__DIR__ . '/../../IMAGES/' . $officer['picture_profile']);
+$profileFilename = basename((string)($officer['picture_profile'] ?? ''));
+$profileStoragePath = __DIR__ . '/../../uploads/profile_pictures/' . $profileFilename;
+$legacyProfilePath = __DIR__ . '/../../IMAGES/' . $profileFilename;
+$profile_picture_exists = $profileFilename !== ''
+    && (is_file($profileStoragePath) || is_file($legacyProfilePath));
 $profile_picture = $profile_picture_exists
-    ? "/BMS/IMAGES/" . $officer['picture_profile']
+    ? (is_file($profileStoragePath)
+        ? "/BMS/uploads/profile_pictures/" . rawurlencode($profileFilename)
+        : "/BMS/IMAGES/" . rawurlencode($profileFilename))
     : "/BMS/IMAGES/default-avatar.png";
 	
 ?>

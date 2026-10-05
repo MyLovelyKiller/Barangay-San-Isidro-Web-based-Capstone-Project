@@ -114,8 +114,7 @@ if (isset($_FILES['picture_profile']) && $_FILES['picture_profile']['error'] ===
     }
 
     /* ClamAV */
-    $clamScanPath =
-        'C:\Users\Gary\Downloads\clamav-1.5.4.win.x64\clamav-1.5.4.win.x64\clamscan.exe';
+    $clamScanPath = getenv('BMS_CLAMSCAN_PATH') ?: '';
 
     if (!is_file($clamScanPath) || !function_exists('exec')) {
         unlink($quarantine_path);
@@ -128,7 +127,7 @@ if (isset($_FILES['picture_profile']) && $_FILES['picture_profile']['error'] ===
 
     exec(
         escapeshellarg($clamScanPath) .
-        ' --no-summary ' .
+        ' --no-summary --max-filesize=20M --max-scansize=100M ' .
         escapeshellarg($quarantine_path),
         $output,
         $exitCode
@@ -146,7 +145,7 @@ if (isset($_FILES['picture_profile']) && $_FILES['picture_profile']['error'] ===
     }
 
     /* Move clean file to permanent storage */
-    $upload_dir = __DIR__ . '/../../IMAGES/';
+    $upload_dir = __DIR__ . '/../../uploads/profile_pictures/';
 
     if (!is_dir($upload_dir) && !mkdir($upload_dir, 0755, true)) {
         unlink($quarantine_path);
@@ -215,7 +214,10 @@ if ($stmt->execute()) {
         $picture_profile !== null &&
         !empty($old_filename)
     ) {
-        $old_path = __DIR__ . '/../../IMAGES/' . basename($old_filename);
+        $old_path = __DIR__ . '/../../uploads/profile_pictures/' . basename($old_filename);
+        if (!is_file($old_path)) {
+            $old_path = __DIR__ . '/../../IMAGES/' . basename($old_filename);
+        }
 
         if (is_file($old_path) && $old_path !== ($upload_dir . $picture_profile)) {
             unlink($old_path);
@@ -226,7 +228,7 @@ if ($stmt->execute()) {
 } else {
     /* Remove newly uploaded picture if database update failed */
     if ($picture_profile !== null) {
-        $new_path = __DIR__ . '/../../IMAGES/' . basename($picture_profile);
+        $new_path = __DIR__ . '/../../uploads/profile_pictures/' . basename($picture_profile);
 
         if (is_file($new_path)) {
             unlink($new_path);

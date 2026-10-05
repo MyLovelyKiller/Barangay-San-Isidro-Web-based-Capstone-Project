@@ -1,12 +1,7 @@
 <?php
 
 require_once __DIR__ . '/config.php';
-
-$conn = new mysqli("localhost", "root", "", "barangay_db");
-
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+require_once __DIR__ . '/../BACKEND/db_connect.php';
 
 date_default_timezone_set('Asia/Manila');
 

@@ -9,15 +9,11 @@
  * IMPORTANT:
  * Keep this file outside public access.
  *
- * Replace the placeholder password with your NEW
- * Gmail App Password after revoking the exposed one.
+ * Configure credentials in the server environment.
  */
 
 return [
-    'host'       => 'smtp.gmail.com',
-    'username'   => 'christianmorales602@gmail.com',
-    'password'   => 'flfnjwrbavgelzgu',
-    'port'       => 587,
-    'from_email' => 'christianmorales602@gmail.com',
-    'from_name'  => 'Barangay San Isidro'
+    'api_key'    => getenv('BMS_RESEND_API_KEY') ?: '',
+    'from_email' => getenv('BMS_RESEND_FROM_EMAIL') ?: '',
+    'from_name'  => getenv('BMS_RESEND_FROM_NAME') ?: 'Barangay San Isidro',
 ];

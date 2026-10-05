@@ -46,15 +46,9 @@ $decrypted_id = "N/A";
 
 // Ensure $user exists and keys are defined before decrypting
 if ($user && !empty($user['id_number'])) {
-    if (isset($ciphering, $encryption_key, $encryption_iv)) {
-        // Fixed: changed $officer to $user to match your resident query
-        $decrypted_id = openssl_decrypt($user['id_number'], $ciphering, $encryption_key, 0, $encryption_iv);
-        
-        if ($decrypted_id === false) {
-            $decrypted_id = "Encryption Error";
-        }
-    } else {
-        $decrypted_id = "Config Missing";
+    $decrypted_id = bms_decrypt_profile_id($user['id_number']);
+    if ($decrypted_id === false) {
+        $decrypted_id = "Encryption Error";
     }
 }
 ?>

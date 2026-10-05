@@ -1,7 +1,2 @@
 <?php
-$host = "localhost";
-$user = "root";
-$pass = "";
-$db   = "bpso_db"; 
-$conn = mysqli_connect($host, $user, $pass, $db);
-?>
+require_once __DIR__ . '/../BACKEND/db_connect.php';

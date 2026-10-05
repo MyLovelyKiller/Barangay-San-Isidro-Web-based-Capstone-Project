@@ -28,8 +28,7 @@ $username = $_SESSION['username'];
 
 function scanFileWithClamAV($filePath, &$scanMessage = null)
 {
-    $clamScanPath =
-        'C:\Users\Gary\Downloads\clamav-1.5.4.win.x64\clamav-1.5.4.win.x64\clamscan.exe';
+    $clamScanPath = getenv('BMS_CLAMSCAN_PATH') ?: '';
 
     if (!is_file($clamScanPath)) {
         $scanMessage = 'ClamAV scanner was not found.';
@@ -48,7 +47,7 @@ function scanFileWithClamAV($filePath, &$scanMessage = null)
 
     $command =
         escapeshellarg($clamScanPath) .
-        ' --no-summary ' .
+        ' --no-summary --max-filesize=20M --max-scansize=100M ' .
         escapeshellarg($filePath);
 
     $output = [];

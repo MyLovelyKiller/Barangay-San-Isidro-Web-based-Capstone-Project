@@ -15,10 +15,6 @@ $csrf_token = $_SESSION['csrf_token'];
 
 // --- ENCRYPTION SETTINGS ---
 // Ensure these match your registration script
-$ciphering = "AES-256-CBC";
-$encryption_key = 'your-super-secret-32-char-key-here!!'; 
-$encryption_iv = '1234567890123456'; 
-
 if (
     !isset($_SESSION['official_id']) ||
     !isset($_SESSION['department']) ||
@@ -144,25 +140,21 @@ $status_stmt->close();
 $decrypted_id = "N/A"; 
 
 if (!empty($officer['id_number'])) {
-    $decrypted_id = openssl_decrypt(
-        $officer['id_number'],
-        $ciphering,
-        $encryption_key,
-        0,
-        $encryption_iv
-    );
+    $decrypted_id = bms_decrypt_profile_id($officer['id_number']);
 
     if ($decrypted_id === false) {
         $decrypted_id = "Encryption Error";
     }
 }
 
-$profile_picture = (
-    !empty($officer['picture_profile']) &&
-    file_exists("../IMAGES/" . $officer['picture_profile'])
-)
-    ? "../IMAGES/" . $officer['picture_profile']
-    : "../IMAGES/default-avatar.png";
+$profileFilename = basename((string)($officer['picture_profile'] ?? ''));
+$profileStoragePath = __DIR__ . '/../uploads/profile_pictures/' . $profileFilename;
+$legacyProfilePath = __DIR__ . '/../IMAGES/' . $profileFilename;
+$profile_picture = $profileFilename !== '' && is_file($profileStoragePath)
+    ? "../uploads/profile_pictures/" . rawurlencode($profileFilename)
+    : ($profileFilename !== '' && is_file($legacyProfilePath)
+        ? "../IMAGES/" . rawurlencode($profileFilename)
+        : "../IMAGES/default-avatar.png");
 ?>
 
 <!DOCTYPE html>

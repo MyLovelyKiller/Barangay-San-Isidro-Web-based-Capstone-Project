@@ -123,21 +123,13 @@ if ($result && $result->num_rows > 0) {
 }
 
 // 1. Define Encryption Settings (Must match your registration/edit script)
-$ciphering = "AES-256-CBC";
-$encryption_key = 'your-super-secret-32-char-key-here!!'; 
-$encryption_iv = '1234567890123456'; 
+
 
 // 2. Decryption for ID No. (Changed $officer to $row)
 $decrypted_id = "N/A"; 
 
 if (!empty($row['id_number'])) {
-    $decrypted_id = openssl_decrypt(
-        $row['id_number'],
-        $ciphering,
-        $encryption_key,
-        0,
-        $encryption_iv
-    );
+    $decrypted_id = bms_decrypt_profile_id($row['id_number']);
 
     // Fallback if decryption fails
     if ($decrypted_id === false) {
@@ -256,4 +248,3 @@ $profile_picture = (!empty($row['picture_profile']) && file_exists("../IMAGES/" 
     </div>
 </body>
 </html>
-

@@ -1,8 +1,12 @@
 <?php
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit();
+}
 
 function scanFileWithClamAV($filePath, &$scanMessage = null, &$scanOutput = null)
 {
-    $clamScanPath = 'C:\Users\Gary\Downloads\clamav-1.5.4.win.x64\clamav-1.5.4.win.x64\clamscan.exe';
+    $clamScanPath = getenv('BMS_CLAMSCAN_PATH') ?: '';
 
     // Check if ClamAV exists
     if (!is_file($clamScanPath)) {
@@ -28,7 +32,7 @@ function scanFileWithClamAV($filePath, &$scanMessage = null, &$scanOutput = null
     // Build ClamAV command
     $command =
         escapeshellarg($clamScanPath) .
-        ' --no-summary ' .
+        ' --no-summary --max-filesize=20M --max-scansize=100M ' .
         escapeshellarg($filePath) .
         ' 2>&1';
 

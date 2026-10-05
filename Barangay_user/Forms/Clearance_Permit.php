@@ -1,5 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . '/../../BACKEND/security_helpers.php';
+bms_start_secure_session();
+bms_send_security_headers();
 
 /* ============================================================
    CSRF TOKEN
@@ -12,7 +14,8 @@ if (empty($_SESSION['csrf_token'])) {
 $csrf_token = $_SESSION['csrf_token'];
 
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
 include "../../BACKEND/db_connect.php";
 
 /* Check if user is logged in */

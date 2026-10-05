@@ -29,9 +29,14 @@ $stmt->execute();
 $officer = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
-$profile_picture = (!empty($officer['picture_profile']))
-    ? "/BMS/IMAGES/" . basename($officer['picture_profile'])
-    : "/BMS/IMAGES/default-avatar.png";
+$profileFilename = basename((string)($officer['picture_profile'] ?? ''));
+$profileStoragePath = __DIR__ . '/../../uploads/profile_pictures/' . $profileFilename;
+$legacyProfilePath = __DIR__ . '/../../IMAGES/' . $profileFilename;
+$profile_picture = $profileFilename !== '' && is_file($profileStoragePath)
+    ? "/BMS/uploads/profile_pictures/" . rawurlencode($profileFilename)
+    : ($profileFilename !== '' && is_file($legacyProfilePath)
+        ? "/BMS/IMAGES/" . rawurlencode($profileFilename)
+        : "/BMS/IMAGES/default-avatar.png");
 
 $error_message = isset($_GET['error']) ? trim($_GET['error']) : '';
 ?>

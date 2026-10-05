@@ -1,25 +1,9 @@
 <?php
 
-/* =========================================================
-   SECURE SESSION SETTINGS
-   ========================================================= */
-
-$secureCookie = (
-    isset($_SERVER['HTTPS']) &&
-    $_SERVER['HTTPS'] !== 'off'
-);
-
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path' => '/',
-    'secure' => $secureCookie,
-    'httponly' => true,
-    'samesite' => 'Lax'
-]);
-
-session_start();
-
-require_once "db_connect.php";
+require_once __DIR__ . '/security_helpers.php';
+bms_start_secure_session();
+bms_send_security_headers();
+require_once __DIR__ . '/db_connect.php';
 
 
 /* =========================================================
@@ -31,6 +15,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
+if (!bms_rate_limit('login', 10, 900)) {
+    header("Location: /BMS/CODES/login.php?error=locked");
+    exit();
+}
+
 
 /* =========================================================
    CSRF TOKEN CHECK
@@ -38,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 if (
     !isset($_POST['csrf_token'], $_SESSION['csrf_token']) ||
+    !is_string($_POST['csrf_token']) ||
     !hash_equals(
         $_SESSION['csrf_token'],
         $_POST['csrf_token']
@@ -62,17 +52,22 @@ if (!empty($_POST['bms_v_field'] ?? '')) {
    REQUIRED INPUTS
    ========================================================= */
 
-$account_type = strtolower(trim($_POST['account_type'] ?? ''));
-$username     = trim($_POST['username'] ?? '');
-$password     = $_POST['password'] ?? '';
-$recaptchaToken = trim($_POST['g-recaptcha-response'] ?? '');
+$accountTypeInput = $_POST['account_type'] ?? '';
+$usernameInput = $_POST['username'] ?? '';
+$passwordInput = $_POST['password'] ?? '';
+$recaptchaInput = $_POST['g-recaptcha-response'] ?? '';
+$account_type = is_string($accountTypeInput) ? strtolower(trim($accountTypeInput)) : '';
+$username = is_string($usernameInput) ? trim($usernameInput) : '';
+$password = is_string($passwordInput) ? $passwordInput : '';
+$recaptchaToken = is_string($recaptchaInput) ? trim($recaptchaInput) : '';
 
 
 if (
     $account_type === '' ||
     $username === '' ||
     $password === '' ||
-    $recaptchaToken === ''
+    $recaptchaToken === '' ||
+    strlen($recaptchaToken) > 8192
 ) {
     header("Location: /BMS/CODES/login.php?error=invalid");
     exit();
@@ -176,6 +171,10 @@ $payload = [
 ];
 
 $jsonPayload = json_encode($payload);
+if ($jsonPayload === false) {
+    header("Location: /BMS/CODES/login.php?error=captcha_failed");
+    exit();
+}
 
 
 /* =========================================================
@@ -183,6 +182,10 @@ $jsonPayload = json_encode($payload);
    ========================================================= */
 
 $ch = curl_init($recaptchaUrl);
+if ($ch === false) {
+    header("Location: /BMS/CODES/login.php?error=captcha_failed");
+    exit();
+}
 
 curl_setopt_array($ch, [
     CURLOPT_POST => true,
@@ -192,7 +195,9 @@ curl_setopt_array($ch, [
     ],
     CURLOPT_POSTFIELDS => $jsonPayload,
     CURLOPT_TIMEOUT => 10,
-    CURLOPT_CONNECTTIMEOUT => 5
+    CURLOPT_CONNECTTIMEOUT => 5,
+    CURLOPT_SSL_VERIFYPEER => true,
+    CURLOPT_SSL_VERIFYHOST => 2
 ]);
 
 $recaptchaResponse = curl_exec($ch);

@@ -1,8 +1,10 @@
 <?php
+require_once __DIR__ . '/../BACKEND/security_helpers.php';
+bms_start_secure_session();
+bms_send_security_headers();
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-session_start();
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
 
 if (!isset($_SESSION['official_id']) || strtoupper(trim($_SESSION['department'] ?? '')) !== "CLEARANCE") {
     header("Location: /BMS/CODES/login.php?error=1");
@@ -316,13 +318,7 @@ $decrypted_id = "N/A";
 
 if (!empty($officer['id_number'])) {
 
-    $decrypted_id = openssl_decrypt(
-        $officer['id_number'],
-        $ciphering,
-        $encryption_key,
-        0,
-        $encryption_iv
-    );
+    $decrypted_id = bms_decrypt_profile_id($officer['id_number']);
 
     if ($decrypted_id === false) {
         $decrypted_id = "Encryption Error";

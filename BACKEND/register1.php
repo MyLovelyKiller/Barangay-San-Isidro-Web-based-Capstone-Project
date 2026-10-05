@@ -5,7 +5,9 @@
 ========================================================= */
 
 ob_start();
-session_start();
+require_once __DIR__ . '/security_helpers.php';
+bms_start_secure_session();
+bms_send_security_headers();
 
 include "db_connect.php";
 
@@ -26,6 +28,7 @@ $csrfToken = $_POST['csrf_token'] ?? '';
 
 if (
     empty($csrfToken) ||
+    !is_string($csrfToken) ||
     empty($_SESSION['csrf_token']) ||
     !hash_equals(
         $_SESSION['csrf_token'],
@@ -92,6 +95,15 @@ if (
     exit();
 }
 
+if (!bms_rate_limit('registration-otp-verify', 10, 3600)) {
+    http_response_code(429);
+    echo json_encode([
+        "success" => false,
+        "message" => "Too many verification attempts. Please try again later."
+    ]);
+    exit();
+}
+
 
 /* =========================================================
    5. OTP VALIDATION
@@ -104,7 +116,9 @@ $user_otp = trim(
 
 if (
     $user_otp === '' ||
-    !isset($_SESSION['otp'])
+    !isset($_SESSION['otp']) ||
+    !isset($_SESSION['otp_created_at']) ||
+    time() - (int)$_SESSION['otp_created_at'] > 600
 ) {
 
     echo json_encode([
@@ -126,6 +140,28 @@ if (
 $sessionOtp = (string)$_SESSION['otp'];
 
 if (!hash_equals($sessionOtp, $user_otp)) {
+    $_SESSION['otp_attempts'] = (int)($_SESSION['otp_attempts'] ?? 0) + 1;
+    if ($_SESSION['otp_attempts'] >= 5) {
+        $temporaryFile = $_SESSION['temp_file_path'] ?? '';
+        if (is_string($temporaryFile) && is_file($temporaryFile)) {
+            unlink($temporaryFile);
+        }
+        unset(
+            $_SESSION['temp_user_data'],
+            $_SESSION['temp_file_name'],
+            $_SESSION['temp_file_path'],
+            $_SESSION['otp'],
+            $_SESSION['otp_created_at'],
+            $_SESSION['otp_attempts'],
+            $_SESSION['registration_security_verified']
+        );
+        http_response_code(429);
+        echo json_encode([
+            "success" => false,
+            "message" => "Too many incorrect codes. Please register again."
+        ]);
+        exit();
+    }
 
     echo json_encode([
         "success" => false,
@@ -239,11 +275,11 @@ if ($name === '' || $username === '' || $email === '') {
 }
 
 
-if ($password === '') {
+if (!bms_password_is_strong($password)) {
 
     echo json_encode([
         "success" => false,
-        "message" => "Password is required."
+        "message" => "Password does not meet the security requirements."
     ]);
 
     exit();
@@ -419,23 +455,6 @@ if (
 
 
 /* =========================================================
-   13. ENCRYPTION CONFIGURATION
-========================================================= */
-
-$ciphering = "AES-128-CTR";
-
-define(
-    "ENCRYPTION_KEY",
-    "BarangaySanIsidro2026"
-);
-
-define(
-    "ENCRYPTION_IV",
-    "1234567891011121"
-);
-
-
-/* =========================================================
    14. ID NUMBER ENCRYPTION
 ========================================================= */
 
@@ -461,17 +480,10 @@ if ($clean_id === '') {
     exit();
 }
 
-
-$encrypted_id = openssl_encrypt(
-    $clean_id,
-    $ciphering,
-    ENCRYPTION_KEY,
-    0,
-    ENCRYPTION_IV
-);
+$encrypted_id = bms_encrypt_profile_id($clean_id);
 
 
-if ($encrypted_id === false) {
+if ($encrypted_id === false || strlen($encrypted_id) > 100) {
 
     @unlink($real_file_path);
 

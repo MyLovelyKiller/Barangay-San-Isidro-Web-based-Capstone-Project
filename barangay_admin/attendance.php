@@ -1,13 +1,14 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/../BACKEND/security_helpers.php';
+bms_start_secure_session();
+bms_send_security_headers();
 
 include 'config.php';
 include 'session_time-out.php';
 
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
 
 date_default_timezone_set('Asia/Manila');
 

@@ -1,7 +1,9 @@
 <?php
 
 ob_start();
-session_start();
+require_once __DIR__ . '/../../BACKEND/security_helpers.php';
+bms_start_secure_session();
+bms_send_security_headers();
 
 include "../../BACKEND/db_connect.php";
 
@@ -250,7 +252,7 @@ function preValidateFileGroup(
 function scanFileWithClamAV($filePath, &$scanMessage = null)
 {
     // LOCAL DEVELOPMENT PATH
-    $clamScanPath = 'C:\Users\Gary\Downloads\clamav-1.5.4.win.x64\clamav-1.5.4.win.x64\clamscan.exe';
+    $clamScanPath = getenv('BMS_CLAMSCAN_PATH') ?: '';
 
     // Check if ClamAV exists
     if (!is_file($clamScanPath)) {
@@ -273,7 +275,7 @@ function scanFileWithClamAV($filePath, &$scanMessage = null)
     // Build ClamAV command
     $command =
         escapeshellarg($clamScanPath) .
-        ' --no-summary ' .
+        ' --no-summary --max-filesize=20M --max-scansize=100M ' .
         escapeshellarg($filePath);
 
     $output = [];
@@ -1124,6 +1126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (
         empty($csrfToken) ||
+        !is_string($csrfToken) ||
         empty($_SESSION['csrf_token']) ||
         !hash_equals(
             $_SESSION['csrf_token'],
