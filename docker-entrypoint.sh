@@ -27,9 +27,23 @@ sed -ri "s/<VirtualHost \\*:80>/<VirtualHost *:${port}>/" \
     /etc/apache2/sites-available/000-default.conf
 sed -ri "s/^session.cookie_secure = .*/session.cookie_secure = ${session_cookie_secure}/" \
     /usr/local/etc/php/conf.d/bms.ini
+
+rm -f \
+    /etc/apache2/mods-enabled/mpm_event.conf \
+    /etc/apache2/mods-enabled/mpm_event.load \
+    /etc/apache2/mods-enabled/mpm_worker.conf \
+    /etc/apache2/mods-enabled/mpm_worker.load
+if [ ! -e /etc/apache2/mods-enabled/mpm_prefork.load ]; then
+    ln -s ../mods-available/mpm_prefork.load \
+        /etc/apache2/mods-enabled/mpm_prefork.load
+fi
+if [ ! -e /etc/apache2/mods-enabled/mpm_prefork.conf ]; then
+    ln -s ../mods-available/mpm_prefork.conf \
+        /etc/apache2/mods-enabled/mpm_prefork.conf
+fi
+
 printf '\nSetEnvIf X-Forwarded-Proto https HTTPS=on\n' \
     > /etc/apache2/conf-available/bms-proxy-https.conf
-a2enconf bms-proxy-https
 cat > /etc/apache2/conf-available/bms-storage.conf <<'APACHE'
 <Directory "/data/quarantine">
     Require all denied
@@ -38,7 +52,14 @@ cat > /etc/apache2/conf-available/bms-storage.conf <<'APACHE'
     Require all denied
 </Directory>
 APACHE
-a2enconf bms-storage
+printf 'ServerName localhost\n' \
+    > /etc/apache2/conf-available/bms-servername.conf
+ln -sf ../conf-available/bms-proxy-https.conf \
+    /etc/apache2/conf-enabled/bms-proxy-https.conf
+ln -sf ../conf-available/bms-storage.conf \
+    /etc/apache2/conf-enabled/bms-storage.conf
+ln -sf ../conf-available/bms-servername.conf \
+    /etc/apache2/conf-enabled/bms-servername.conf
 
 storage_root=/data
 mkdir -p \
@@ -106,4 +127,5 @@ Options -Indexes -ExecCGI
 HTACCESS
 fi
 
+apache2ctl -t
 exec apache2-foreground

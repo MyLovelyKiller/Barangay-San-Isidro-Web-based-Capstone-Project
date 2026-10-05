@@ -10,6 +10,7 @@ RUN apt-get update \
         libonig-dev \
     && docker-php-ext-install curl mbstring mysqli \
     && a2enmod headers rewrite \
+    && sed -ri 's|^[[:space:]]*NotifyClamd[[:space:]].*|#NotifyClamd disabled: this image runs clamscan, not clamd|' /etc/clamav/freshclam.conf \
     && freshclam --stdout --verbose \
     && rm -rf /var/lib/apt/lists/*
 
