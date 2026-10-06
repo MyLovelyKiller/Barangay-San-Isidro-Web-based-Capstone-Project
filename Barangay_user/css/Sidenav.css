@@ -106,7 +106,8 @@
   width: 100%;
 }
 
-.navlinks a {
+.navlinks a,
+.navlinks .logout-link {
   display: flex;
   align-items: center;
   gap: 15px;
@@ -117,6 +118,15 @@
   font-size: 14px;
   width: 100%;
   transition: all 0.2s ease;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.navlinks .logout-form {
+  width: 100%;
+  margin: 0;
 }
 
 .navlinks a.active {
@@ -125,7 +135,8 @@
   border-left: none;
 }
 
-.navlinks a:hover {
+.navlinks a:hover,
+.navlinks .logout-link:hover {
   background: rgba(255, 255, 255, 0.1);
   color: white;
 }
@@ -153,7 +164,8 @@
   .logosidebar img {
     width: 70px;
   }
-  .navlinks a {
+  .navlinks a,
+  .navlinks .logout-link {
     padding: 12px 20px;
     font-size: 13px;
   }

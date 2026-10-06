@@ -1,74 +1,195 @@
 <?php
-require_once __DIR__ . '/../BACKEND/security_helpers.php';
-bms_start_secure_session();
-bms_send_security_headers();
-error_reporting(E_ALL);
-ini_set('display_errors', '0');
-ini_set('log_errors', '1');
 
-if (!isset($_SESSION['official_id']) || strtoupper(trim($_SESSION['department'] ?? '')) !== "CLEARANCE") {
+/*
+ * Do not display PHP/database errors to users.
+ * Detailed errors are written to the server error log.
+ */
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+
+session_start();
+
+require_once '../BACKEND/db_connect.php';
+
+
+/* =========================================================
+   1. CHECK LOGIN
+   ========================================================= */
+
+if (!isset($_SESSION['official_id'])) {
     header("Location: /BMS/CODES/login.php?error=1");
     exit();
 }
 
-require_once '../BACKEND/db_connect.php';
+$official_id = (int)$_SESSION['official_id'];
+
+if ($official_id <= 0) {
+    header("Location: /BMS/CODES/login.php?error=1");
+    exit();
+}
+
+
+/* =========================================================
+   2. DEFAULT VALUES
+   ========================================================= */
 
 $officer = null;
 $user_full_name = 'Officer';
-$official_id = (int)$_SESSION['official_id'];
+
 $today = date('Y-m-d');
+
 $is_timed_in = false;
 $profile_picture = '';
 $satellite_id = 0;
 
-/* GET OFFICER INFORMATION */
+
+/* =========================================================
+   3. GET OFFICER INFORMATION
+   VERIFY CLEARANCE DIRECTLY FROM DATABASE
+   ========================================================= */
+
 $officer_query = "
     SELECT *
     FROM officials
     WHERE official_id = ?
-    AND department = 'CLEARANCE'
+      AND department = 'CLEARANCE'
     LIMIT 1
 ";
 
 $stmt = $conn->prepare($officer_query);
 
 if (!$stmt) {
-    die("Prepare failed: " . $conn->error);
+
+    error_log(
+        "Clearance profile officer query prepare failed: " .
+        $conn->error
+    );
+
+    http_response_code(500);
+    exit("Unable to load profile.");
 }
 
 $stmt->bind_param("i", $official_id);
-$stmt->execute();
+
+if (!$stmt->execute()) {
+
+    error_log(
+        "Clearance profile officer query execute failed: " .
+        $stmt->error
+    );
+
+    $stmt->close();
+
+    http_response_code(500);
+    exit("Unable to load profile.");
+}
 
 $result = $stmt->get_result();
-$officer = $result->fetch_assoc();
+
+if ($result) {
+    $officer = $result->fetch_assoc();
+}
 
 $stmt->close();
 
+
+/* =========================================================
+   4. VERIFY OFFICER EXISTS
+   ========================================================= */
+
 if (!$officer) {
-    die("Officer not found.");
+    http_response_code(403);
+    exit("Access denied.");
 }
+
 
 $user_full_name = $officer['name'] ?? 'Officer';
-$satellite_id = (int)($officer['satellite_id'] ?? 0);
 
-/* REQUIRE ASSIGNED SATELLITE */
+$satellite_id = (int)(
+    $officer['satellite_id'] ?? 0
+);
+
+
+/* =========================================================
+   5. REQUIRE ASSIGNED SATELLITE
+   ========================================================= */
+
 if ($satellite_id <= 0) {
-    die("Your Clearance account does not have an assigned satellite. Please contact the administrator.");
+    http_response_code(403);
+
+    exit(
+        "Your Clearance account does not have an assigned " .
+        "satellite. Please contact the administrator."
+    );
 }
 
-/* PROFILE PICTURE */
+
+/* =========================================================
+   6. PROFILE PICTURE
+   ========================================================= */
+
 if (!empty($officer['picture_profile'])) {
     $profile_picture = $officer['picture_profile'];
 }
 
-/* ATTENDANCE ACTION */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['attendance_action'])) {
+
+/* =========================================================
+   7. ATTENDANCE ACTION
+   ========================================================= */
+
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST' &&
+    isset($_POST['attendance_action'])
+) {
+
+
+    /* =====================================================
+       7A. CSRF TOKEN VALIDATION
+       ===================================================== */
+
+    $submitted_token = $_POST['csrf_token'] ?? '';
+
+    if (
+        empty($submitted_token) ||
+        empty($_SESSION['csrf_token']) ||
+        !hash_equals(
+            $_SESSION['csrf_token'],
+            $submitted_token
+        )
+    ) {
+        http_response_code(403);
+        exit("Invalid CSRF token.");
+    }
+
+
+    /* =====================================================
+       7B. VALIDATE ATTENDANCE ACTION
+       ===================================================== */
 
     $action = $_POST['attendance_action'];
+
+    $allowed_actions = [
+        'time_in',
+        'time_out'
+    ];
+
+    if (!in_array($action, $allowed_actions, true)) {
+        http_response_code(400);
+        exit("Invalid attendance action.");
+    }
+
+
+    /* =====================================================
+       7C. CURRENT DATE/TIME
+       ===================================================== */
+
     $current_time = date('H:i:s');
     $current_datetime = date('Y-m-d H:i:s');
 
-    /* ================= TIME IN ================= */
+
+    /* =====================================================
+       TIME IN
+       ===================================================== */
 
     if ($action === 'time_in') {
 
@@ -76,158 +197,296 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['attendance_action']))
             SELECT id
             FROM attendance
             WHERE official_id = ?
-            AND satellite_id = ?
-            AND date = ?
-            AND time_out IS NULL
+              AND satellite_id = ?
+              AND date = ?
+              AND time_out IS NULL
             LIMIT 1
         ");
 
-        if ($check) {
+        if (!$check) {
 
-            $check->bind_param(
-                "iis",
-                $official_id,
-                $satellite_id,
-                $today
+            error_log(
+                "Clearance attendance time-in check prepare failed: " .
+                $conn->error
             );
 
-            $check->execute();
+            http_response_code(500);
+            exit("Unable to process attendance.");
+        }
 
-            $existing = $check->get_result()->fetch_assoc();
+        $check->bind_param(
+            "iis",
+            $official_id,
+            $satellite_id,
+            $today
+        );
+
+        if (!$check->execute()) {
+
+            error_log(
+                "Clearance attendance time-in check execute failed: " .
+                $check->error
+            );
 
             $check->close();
 
-            if (!$existing) {
+            http_response_code(500);
+            exit("Unable to process attendance.");
+        }
 
-                $status = 'Present';
-                $auto_timeout = 0;
+        $existing = $check
+            ->get_result()
+            ->fetch_assoc();
 
-                $insert = $conn->prepare("
-                    INSERT INTO attendance
-                    (
-                        official_id,
-                        satellite_id,
-                        date,
-                        time_in,
-                        status,
-                        is_auto_timeout,
-                        created_at
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ");
+        $check->close();
 
-                if ($insert) {
 
-                    $insert->bind_param(
-                        "iisssis",
-                        $official_id,
-                        $satellite_id,
-                        $today,
-                        $current_time,
-                        $status,
-                        $auto_timeout,
-                        $current_datetime
-                    );
+        /* -------------------------------------------------
+           Only create a new attendance record if there is
+           no active attendance record for today.
+           ------------------------------------------------- */
 
-                    $insert->execute();
-                    $insert->close();
-                }
+        if (!$existing) {
+
+            $status = 'Present';
+            $auto_timeout = 0;
+
+            $insert = $conn->prepare("
+                INSERT INTO attendance
+                (
+                    official_id,
+                    satellite_id,
+                    date,
+                    time_in,
+                    status,
+                    is_auto_timeout,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+
+            if (!$insert) {
+
+                error_log(
+                    "Clearance attendance time-in insert prepare failed: " .
+                    $conn->error
+                );
+
+                http_response_code(500);
+                exit("Unable to process attendance.");
             }
+
+            $insert->bind_param(
+                "iisssis",
+                $official_id,
+                $satellite_id,
+                $today,
+                $current_time,
+                $status,
+                $auto_timeout,
+                $current_datetime
+            );
+
+            if (!$insert->execute()) {
+
+                error_log(
+                    "Clearance attendance time-in insert failed: " .
+                    $insert->error
+                );
+
+                $insert->close();
+
+                http_response_code(500);
+                exit("Unable to process attendance.");
+            }
+
+            $insert->close();
         }
     }
 
-    /* ================= TIME OUT ================= */
+
+    /* =====================================================
+       TIME OUT
+       ===================================================== */
 
     if ($action === 'time_out') {
 
         $fetch = $conn->prepare("
-            SELECT id, time_in
+            SELECT
+                id,
+                time_in
             FROM attendance
             WHERE official_id = ?
-            AND satellite_id = ?
-            AND date = ?
-            AND time_out IS NULL
+              AND satellite_id = ?
+              AND date = ?
+              AND time_out IS NULL
             ORDER BY id DESC
             LIMIT 1
         ");
 
-        if ($fetch) {
+        if (!$fetch) {
 
-            $fetch->bind_param(
-                "iis",
-                $official_id,
-                $satellite_id,
-                $today
+            error_log(
+                "Clearance attendance time-out fetch prepare failed: " .
+                $conn->error
             );
 
-            $fetch->execute();
+            http_response_code(500);
+            exit("Unable to process attendance.");
+        }
 
-            $attendance = $fetch->get_result()->fetch_assoc();
+        $fetch->bind_param(
+            "iis",
+            $official_id,
+            $satellite_id,
+            $today
+        );
+
+        if (!$fetch->execute()) {
+
+            error_log(
+                "Clearance attendance time-out fetch execute failed: " .
+                $fetch->error
+            );
 
             $fetch->close();
 
-            if ($attendance) {
+            http_response_code(500);
+            exit("Unable to process attendance.");
+        }
 
-                $work_hours = "0.00";
+        $attendance = $fetch
+            ->get_result()
+            ->fetch_assoc();
 
-                if (!empty($attendance['time_in'])) {
+        $fetch->close();
 
-                    $start = new DateTime($attendance['time_in']);
-                    $end = new DateTime($current_time);
+
+        if ($attendance) {
+
+            $work_hours = "0.00";
+
+
+            /* ---------------------------------------------
+               Calculate work hours
+               --------------------------------------------- */
+
+            if (!empty($attendance['time_in'])) {
+
+                try {
+
+                    $start = new DateTime(
+                        $attendance['time_in']
+                    );
+
+                    $end = new DateTime(
+                        $current_time
+                    );
 
                     $interval = $start->diff($end);
 
+                    /*
+                     * Preserve the existing calculation behavior.
+                     */
                     $work_hours = number_format(
-                        $interval->h + ($interval->i / 60),
+                        ($interval->days * 24) +
+                        $interval->h +
+                        ($interval->i / 60),
                         2
                     );
-                }
 
-                $attendance_id = (int)$attendance['id'];
+                } catch (Exception $e) {
 
-                $update = $conn->prepare("
-                    UPDATE attendance
-                    SET
-                        time_out = ?,
-                        work_hours = ?,
-                        updated_at = ?
-                    WHERE id = ?
-                    AND official_id = ?
-                    AND satellite_id = ?
-                ");
-
-                if ($update) {
-
-                    $update->bind_param(
-                        "sssiii",
-                        $current_time,
-                        $work_hours,
-                        $current_datetime,
-                        $attendance_id,
-                        $official_id,
-                        $satellite_id
+                    error_log(
+                        "Clearance attendance work-hour calculation failed: " .
+                        $e->getMessage()
                     );
 
-                    $update->execute();
-                    $update->close();
+                    $work_hours = "0.00";
                 }
             }
+
+
+            $attendance_id = (int)$attendance['id'];
+
+
+            /* ---------------------------------------------
+               Update attendance
+               --------------------------------------------- */
+
+            $update = $conn->prepare("
+                UPDATE attendance
+                SET
+                    time_out = ?,
+                    work_hours = ?,
+                    updated_at = ?
+                WHERE id = ?
+                  AND official_id = ?
+                  AND satellite_id = ?
+                  AND time_out IS NULL
+            ");
+
+            if (!$update) {
+
+                error_log(
+                    "Clearance attendance time-out update prepare failed: " .
+                    $conn->error
+                );
+
+                http_response_code(500);
+                exit("Unable to process attendance.");
+            }
+
+            $update->bind_param(
+                "sssiii",
+                $current_time,
+                $work_hours,
+                $current_datetime,
+                $attendance_id,
+                $official_id,
+                $satellite_id
+            );
+
+            if (!$update->execute()) {
+
+                error_log(
+                    "Clearance attendance time-out update failed: " .
+                    $update->error
+                );
+
+                $update->close();
+
+                http_response_code(500);
+                exit("Unable to process attendance.");
+            }
+
+            $update->close();
         }
     }
+
+
+    /* =====================================================
+       REDIRECT AFTER ATTENDANCE ACTION
+       ===================================================== */
+
+    $conn->close();
 
     header("Location: profile.php");
     exit();
 }
 
-/* CHECK IF TIMED IN TODAY */
+
+/* =========================================================
+   8. CHECK IF TIMED IN TODAY
+   ========================================================= */
 
 $status_query = "
     SELECT id
     FROM attendance
     WHERE official_id = ?
-    AND satellite_id = ?
-    AND date = ?
-    AND time_out IS NULL
+      AND satellite_id = ?
+      AND date = ?
+      AND time_out IS NULL
     ORDER BY id DESC
     LIMIT 1
 ";
@@ -243,85 +502,167 @@ if ($status_stmt) {
         $today
     );
 
-    $status_stmt->execute();
+    if ($status_stmt->execute()) {
 
-    $row = $status_stmt->get_result()->fetch_assoc();
+        $row = $status_stmt
+            ->get_result()
+            ->fetch_assoc();
+
+        $is_timed_in = $row ? true : false;
+
+    } else {
+
+        error_log(
+            "Clearance attendance status query failed: " .
+            $status_stmt->error
+        );
+    }
 
     $status_stmt->close();
 
-    $is_timed_in = $row ? true : false;
+} else {
+
+    error_log(
+        "Clearance attendance status prepare failed: " .
+        $conn->error
+    );
 }
 
-/* CHECK ACTIVE SESSION */
+
+/* =========================================================
+   9. CHECK ACTIVE SESSION
+   ========================================================= */
+
+$has_active = false;
 
 $check_active = $conn->prepare("
     SELECT id
     FROM attendance
     WHERE official_id = ?
-    AND satellite_id = ?
-    AND date = ?
-    AND time_out IS NULL
+      AND satellite_id = ?
+      AND date = ?
+      AND time_out IS NULL
     LIMIT 1
 ");
 
-$check_active->bind_param(
-    "iis",
-    $official_id,
-    $satellite_id,
-    $today
-);
+if ($check_active) {
 
-$check_active->execute();
+    $check_active->bind_param(
+        "iis",
+        $official_id,
+        $satellite_id,
+        $today
+    );
 
-$has_active = $check_active->get_result()->fetch_assoc();
+    if ($check_active->execute()) {
 
-$check_active->close();
+        $has_active =
+            $check_active
+                ->get_result()
+                ->fetch_assoc();
 
-/* CHECK COMPLETED SHIFT */
+    } else {
+
+        error_log(
+            "Clearance active attendance query failed: " .
+            $check_active->error
+        );
+    }
+
+    $check_active->close();
+
+} else {
+
+    error_log(
+        "Clearance active attendance prepare failed: " .
+        $conn->error
+    );
+}
+
+
+/* =========================================================
+   10. CHECK COMPLETED SHIFT
+   ========================================================= */
+
+$has_completed = false;
 
 $check_completed = $conn->prepare("
     SELECT id
     FROM attendance
     WHERE official_id = ?
-    AND satellite_id = ?
-    AND date = ?
-    AND time_out IS NOT NULL
+      AND satellite_id = ?
+      AND date = ?
+      AND time_out IS NOT NULL
     LIMIT 1
 ");
 
-$check_completed->bind_param(
-    "iis",
-    $official_id,
-    $satellite_id,
-    $today
-);
+if ($check_completed) {
 
-$check_completed->execute();
+    $check_completed->bind_param(
+        "iis",
+        $official_id,
+        $satellite_id,
+        $today
+    );
 
-$has_completed = $check_completed->get_result()->fetch_assoc();
+    if ($check_completed->execute()) {
 
-$check_completed->close();
+        $has_completed =
+            $check_completed
+                ->get_result()
+                ->fetch_assoc();
 
-/* DEFINE FRONTEND ATTENDANCE STATUS */
+    } else {
+
+        error_log(
+            "Clearance completed attendance query failed: " .
+            $check_completed->error
+        );
+    }
+
+    $check_completed->close();
+
+} else {
+
+    error_log(
+        "Clearance completed attendance prepare failed: " .
+        $conn->error
+    );
+}
+
+
+/* =========================================================
+   11. DEFINE FRONTEND ATTENDANCE STATUS
+   ========================================================= */
 
 if ($has_active) {
+
     $attendance_status = "time_out";
+
 } elseif ($has_completed) {
+
     $attendance_status = "completed";
+
 } else {
+
     $attendance_status = "time_in";
 }
 
-/* DECRYPTION FOR ID NUMBER */
+
+/* =========================================================
+   12. DECRYPT ID NUMBER
+   ========================================================= */
 
 $decrypted_id = "N/A";
 
 if (!empty($officer['id_number'])) {
-
-    $decrypted_id = bms_decrypt_profile_id($officer['id_number']);
-
-    if ($decrypted_id === false) {
+    $decryptedId = bms_decrypt_profile_id((string)$officer['id_number']);
+    if ($decryptedId === false) {
+        error_log('Clearance profile ID could not be decrypted.');
         $decrypted_id = "Encryption Error";
+    } else {
+        $decrypted_id = $decryptedId;
     }
 }
+
 ?>

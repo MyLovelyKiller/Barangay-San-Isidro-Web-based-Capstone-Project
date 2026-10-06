@@ -1,19 +1,84 @@
 <?php
 session_start();
+
 require_once '../BACKEND/db_connect.php';
 
 
 /* =========================================================
-   CHECK IF USER IS LOGGED IN AS CLEARANCE OFFICER
+   CHECK IF USER IS LOGGED IN
    ========================================================= */
 
-if (
-    !isset($_SESSION['official_id']) ||
-    !isset($_SESSION['department']) ||
-    $_SESSION['department'] !== "CLEARANCE"
-) {
-    header("HTTP/1.0 403 Forbidden");
+if (!isset($_SESSION['official_id'])) {
+    http_response_code(403);
     exit("Access denied.");
+}
+
+
+/* =========================================================
+   VERIFY CLEARANCE OFFICER DIRECTLY FROM DATABASE
+   ========================================================= */
+
+$official_id = (int)$_SESSION['official_id'];
+
+$officerStmt = $conn->prepare("
+    SELECT
+        official_id,
+        department,
+        satellite_id
+    FROM officials
+    WHERE official_id = ?
+      AND department = 'CLEARANCE'
+    LIMIT 1
+");
+
+if (!$officerStmt) {
+    error_log(
+        "Clearance getAttachment officer query prepare failed: "
+        . $conn->error
+    );
+
+    http_response_code(500);
+    exit("Unable to verify account.");
+}
+
+$officerStmt->bind_param("i", $official_id);
+
+if (!$officerStmt->execute()) {
+    error_log(
+        "Clearance getAttachment officer query execute failed: "
+        . $officerStmt->error
+    );
+
+    $officerStmt->close();
+
+    http_response_code(500);
+    exit("Unable to verify account.");
+}
+
+$officerResult = $officerStmt->get_result();
+
+if (
+    !$officerResult ||
+    !$officerRow = $officerResult->fetch_assoc()
+) {
+    $officerStmt->close();
+
+    http_response_code(403);
+    exit("Access denied.");
+}
+
+$satellite_id = (int)($officerRow['satellite_id'] ?? 0);
+
+$officerStmt->close();
+
+
+/* =========================================================
+   VERIFY SATELLITE
+   ========================================================= */
+
+if ($satellite_id <= 0) {
+    http_response_code(403);
+    exit("Your Clearance account does not have an assigned satellite.");
 }
 
 
@@ -25,8 +90,11 @@ $submitted_token = $_GET['csrf_token'] ?? '';
 
 if (
     empty($submitted_token) ||
-    !isset($_SESSION['csrf_token']) ||
-    !hash_equals($_SESSION['csrf_token'], $submitted_token)
+    empty($_SESSION['csrf_token']) ||
+    !hash_equals(
+        $_SESSION['csrf_token'],
+        $submitted_token
+    )
 ) {
     http_response_code(403);
     exit("Invalid CSRF token.");
@@ -37,12 +105,15 @@ if (
    VALIDATE REQUEST ID
    ========================================================= */
 
-if (!isset($_GET['id']) || !ctype_digit((string)$_GET['id'])) {
+if (
+    !isset($_GET['id']) ||
+    !ctype_digit((string)$_GET['id'])
+) {
     http_response_code(400);
     exit("Invalid request.");
 }
 
-$request_id = (int) $_GET['id'];
+$request_id = (int)$_GET['id'];
 
 if ($request_id <= 0) {
     http_response_code(400);
@@ -51,29 +122,60 @@ if ($request_id <= 0) {
 
 
 /* =========================================================
-   FETCH ATTACHMENT FROM DATABASE
+   FETCH REQUEST
+   MUST BELONG TO OFFICER'S SATELLITE
    ========================================================= */
 
 $stmt = $conn->prepare("
-    SELECT attachment
+    SELECT
+        request_id,
+        satellite_id,
+        attachment
     FROM resident_request
     WHERE request_id = ?
+      AND satellite_id = ?
     LIMIT 1
 ");
 
 if (!$stmt) {
+    error_log(
+        "Clearance getAttachment request query prepare failed: "
+        . $conn->error
+    );
+
     http_response_code(500);
-    exit("Database error.");
+    exit("Unable to load request.");
 }
 
-$stmt->bind_param("i", $request_id);
-$stmt->execute();
+$stmt->bind_param(
+    "ii",
+    $request_id,
+    $satellite_id
+);
+
+if (!$stmt->execute()) {
+    error_log(
+        "Clearance getAttachment request query execute failed: "
+        . $stmt->error
+    );
+
+    $stmt->close();
+
+    http_response_code(500);
+    exit("Unable to load request.");
+}
 
 $result = $stmt->get_result();
 
 if (!$result || $result->num_rows === 0) {
-    http_response_code(404);
-    exit("Request not found.");
+    $stmt->close();
+
+    /*
+     * Do not reveal whether the request exists in another
+     * satellite. Return a generic authorization response.
+     */
+    http_response_code(403);
+    exit("You are not authorized to access this request.");
 }
 
 $row = $result->fetch_assoc();
@@ -95,14 +197,16 @@ if (empty($row['attachment'])) {
    SANITIZE FILENAME
    ========================================================= */
 
-$attachment = basename($row['attachment']);
-
-
 /*
-|--------------------------------------------------------------------------
-| Prevent empty or suspicious filenames
-|--------------------------------------------------------------------------
-*/
+ * basename() prevents directory traversal such as:
+ *
+ * ../../private/file.pdf
+ * ../../../etc/passwd
+ *
+ * Only the filename itself is allowed.
+ */
+
+$attachment = basename(trim($row['attachment']));
 
 if (
     $attachment === '' ||
@@ -115,22 +219,22 @@ if (
 
 
 /* =========================================================
-   BUILD ABSOLUTE FILE PATH
+   BUILD UPLOAD DIRECTORY
    ========================================================= */
 
-/*
-|--------------------------------------------------------------------------
-| Expected upload directory:
-|
-| C:/xampp/htdocs/BMS/Barangay_user/uploads/
-|--------------------------------------------------------------------------
-*/
-
 $uploadDirectory = realpath(
-    $_SERVER['DOCUMENT_ROOT'] . "/BMS/Barangay_user/uploads"
+    $_SERVER['DOCUMENT_ROOT'] .
+    "/BMS/Barangay_user/uploads"
 );
 
-if ($uploadDirectory === false || !is_dir($uploadDirectory)) {
+if (
+    $uploadDirectory === false ||
+    !is_dir($uploadDirectory)
+) {
+    error_log(
+        "Clearance getAttachment upload directory not found."
+    );
+
     http_response_code(500);
     exit("Upload directory not found.");
 }
@@ -140,7 +244,9 @@ if ($uploadDirectory === false || !is_dir($uploadDirectory)) {
    BUILD FILE PATH
    ========================================================= */
 
-$filePath = $uploadDirectory . DIRECTORY_SEPARATOR . $attachment;
+$filePath = $uploadDirectory .
+    DIRECTORY_SEPARATOR .
+    $attachment;
 
 
 /* =========================================================
@@ -154,7 +260,7 @@ if (!is_file($filePath)) {
 
 
 /* =========================================================
-   VERIFY FILE IS INSIDE UPLOAD DIRECTORY
+   RESOLVE REAL FILE PATH
    ========================================================= */
 
 $realFilePath = realpath($filePath);
@@ -165,18 +271,20 @@ if ($realFilePath === false) {
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Ensure the resolved file remains inside the intended upload directory.
-|--------------------------------------------------------------------------
-*/
+/* =========================================================
+   PATH TRAVERSAL PROTECTION
+   ========================================================= */
 
 $uploadDirectoryNormalized = rtrim(
     str_replace('\\', '/', $uploadDirectory),
     '/'
 );
 
-$realFilePathNormalized = str_replace('\\', '/', $realFilePath);
+$realFilePathNormalized = str_replace(
+    '\\',
+    '/',
+    $realFilePath
+);
 
 if (
     strpos(
@@ -184,8 +292,23 @@ if (
         $uploadDirectoryNormalized . '/'
     ) !== 0
 ) {
+    error_log(
+        "Clearance getAttachment blocked invalid file path " .
+        "for request ID: " . $request_id
+    );
+
     http_response_code(403);
     exit("Invalid file location.");
+}
+
+
+/* =========================================================
+   VERIFY REGULAR FILE
+   ========================================================= */
+
+if (!is_file($realFilePath)) {
+    http_response_code(404);
+    exit("Invalid file.");
 }
 
 
@@ -201,9 +324,15 @@ if (function_exists('finfo_open')) {
 
     if ($finfo !== false) {
 
-        $detectedMime = finfo_file($finfo, $realFilePath);
+        $detectedMime = finfo_file(
+            $finfo,
+            $realFilePath
+        );
 
-        if ($detectedMime !== false && !empty($detectedMime)) {
+        if (
+            $detectedMime !== false &&
+            !empty($detectedMime)
+        ) {
             $mimeType = $detectedMime;
         }
 
@@ -212,9 +341,14 @@ if (function_exists('finfo_open')) {
 
 } elseif (function_exists('mime_content_type')) {
 
-    $detectedMime = mime_content_type($realFilePath);
+    $detectedMime = mime_content_type(
+        $realFilePath
+    );
 
-    if ($detectedMime !== false && !empty($detectedMime)) {
+    if (
+        $detectedMime !== false &&
+        !empty($detectedMime)
+    ) {
         $mimeType = $detectedMime;
     }
 }
@@ -233,6 +367,24 @@ if ($fileSize === false) {
 
 
 /* =========================================================
+   SAFE DOWNLOAD FILENAME
+   ========================================================= */
+
+$downloadName = preg_replace(
+    '/[^A-Za-z0-9._-]/',
+    '_',
+    $attachment
+);
+
+if (
+    $downloadName === null ||
+    $downloadName === ''
+) {
+    $downloadName = 'attachment';
+}
+
+
+/* =========================================================
    CLEAR OUTPUT BUFFER
    ========================================================= */
 
@@ -242,27 +394,40 @@ while (ob_get_level() > 0) {
 
 
 /* =========================================================
-   FORCE FILE DOWNLOAD
+   RESPONSE HEADERS
    ========================================================= */
 
 header("Content-Description: File Transfer");
 header("Content-Type: " . $mimeType);
+
 header(
     'Content-Disposition: attachment; filename="' .
-    str_replace('"', '', $attachment) .
+    $downloadName .
     '"'
 );
+
 header("Content-Length: " . $fileSize);
-header("Cache-Control: private, no-store, no-cache, must-revalidate");
-header("Pragma: public");
+
+header(
+    "Cache-Control: private, no-store, " .
+    "no-cache, must-revalidate"
+);
+
+header("Pragma: no-cache");
 header("Expires: 0");
+header("X-Content-Type-Options: nosniff");
 
 
 /* =========================================================
    SEND FILE
    ========================================================= */
 
-readfile($realFilePath);
+if (readfile($realFilePath) === false) {
+    error_log(
+        "Clearance getAttachment failed to read file: " .
+        $realFilePath
+    );
+}
 
 exit;
 ?>

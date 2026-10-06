@@ -11,13 +11,16 @@ date_default_timezone_set('Asia/Manila');
 /* =========================================================
    CSRF PROTECTION
    ========================================================= */
+
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
 $csrf_token = $_SESSION['csrf_token'];
 
-/* USER */
+/* =========================================================
+   USER
+   ========================================================= */
 
 $username = $_SESSION['username'] ?? 'Unknown';
 
@@ -27,7 +30,7 @@ $username = $_SESSION['username'] ?? 'Unknown';
 
 $official_id = (int)($_SESSION['official_id'] ?? 0);
 
-/* If official_id is not stored in the session, use the logged-in username. */
+/* If official_id is not stored in the session, use username. */
 
 if ($official_id > 0) {
 
@@ -37,6 +40,12 @@ if ($official_id > 0) {
         WHERE official_id = ?
         LIMIT 1
     ");
+
+    if (!$officialStmt) {
+        error_log("BPSO blotter: failed to prepare official verification.");
+        http_response_code(500);
+        die("Unable to verify your account.");
+    }
 
     $officialStmt->bind_param("i", $official_id);
 
@@ -49,16 +58,32 @@ if ($official_id > 0) {
         LIMIT 1
     ");
 
+    if (!$officialStmt) {
+        error_log("BPSO blotter: failed to prepare username verification.");
+        http_response_code(500);
+        die("Unable to verify your account.");
+    }
+
     $officialStmt->bind_param("s", $username);
 }
 
-$officialStmt->execute();
+if (!$officialStmt->execute()) {
+    $officialStmt->close();
+
+    error_log("BPSO blotter: official verification query failed.");
+    http_response_code(500);
+    die("Unable to verify your account.");
+}
 
 $official = $officialStmt->get_result()->fetch_assoc();
 
 $officialStmt->close();
 
-if (!$official || strtoupper(trim($official['department'] ?? '')) !== 'BPSO') {
+if (
+    !$official ||
+    strtoupper(trim($official['department'] ?? '')) !== 'BPSO'
+) {
+    http_response_code(403);
     die("Unauthorized access.");
 }
 
@@ -67,10 +92,13 @@ $official_id = (int)$official['official_id'];
 $satellite_id = (int)($official['satellite_id'] ?? 0);
 
 if ($satellite_id <= 0) {
+    http_response_code(403);
     die("Your BPSO account is not assigned to a satellite.");
 }
 
-/* Get satellite name for display/audit purposes. */
+/* =========================================================
+   GET SATELLITE NAME
+   ========================================================= */
 
 $satelliteStmt = $conn->prepare("
     SELECT satellite_name
@@ -79,16 +107,27 @@ $satelliteStmt = $conn->prepare("
     LIMIT 1
 ");
 
+if (!$satelliteStmt) {
+    error_log("BPSO blotter: failed to prepare satellite query.");
+    http_response_code(500);
+    die("Unable to verify satellite information.");
+}
+
 $satelliteStmt->bind_param("i", $satellite_id);
 
-$satelliteStmt->execute();
+if (!$satelliteStmt->execute()) {
+    $satelliteStmt->close();
+
+    error_log("BPSO blotter: satellite query failed.");
+    http_response_code(500);
+    die("Unable to verify satellite information.");
+}
 
 $satelliteData = $satelliteStmt->get_result()->fetch_assoc();
 
 $satelliteStmt->close();
 
 $satellite_name = $satelliteData['satellite_name'] ?? 'Unknown Satellite';
-
 
 /* =========================================================
    CSRF VALIDATION
@@ -108,7 +147,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-
 /* =========================================================
    ADD RECORD
    ========================================================= */
@@ -121,27 +159,46 @@ if (isset($_POST['submit'])) {
 
     $date = trim($_POST['date'] ?? '');
 
-    $dateObj = DateTime::createFromFormat('Y-m-d', $date);
-
-if (
-    !$dateObj ||
-    $dateObj->format('Y-m-d') !== $date
-) {
-    http_response_code(400);
-    die("Invalid date.");
-}
-
     $officer = trim($_POST['officer'] ?? '');
 
     $summary = trim($_POST['summary_remarks'] ?? '');
+
+    if ($complaint === '' || $complainants === '') {
+        http_response_code(400);
+        die("Complaint type and complainant name are required.");
+    }
+
+    $dateObj = DateTime::createFromFormat('Y-m-d', $date);
+
+    if (
+        !$dateObj ||
+        $dateObj->format('Y-m-d') !== $date
+    ) {
+        http_response_code(400);
+        die("Invalid date.");
+    }
 
     $status = 'Pending';
 
     $stmt = $conn->prepare("
         INSERT INTO blotter
-        (satellite_id, complaint, complainants, date, officer, summary_remarks, status)
+        (
+            satellite_id,
+            complaint,
+            complainants,
+            date,
+            officer,
+            summary_remarks,
+            status
+        )
         VALUES (?, ?, ?, ?, ?, ?, ?)
     ");
+
+    if (!$stmt) {
+        error_log("BPSO blotter: failed to prepare add record.");
+        http_response_code(500);
+        die("Failed to prepare blotter record.");
+    }
 
     $stmt->bind_param(
         "issssss",
@@ -154,33 +211,49 @@ if (
         $status
     );
 
-    if ($stmt->execute()) {
+    if (!$stmt->execute()) {
 
-        $desc = "Added blotter record ($complainants - $complaint) at $satellite_name";
-
-        $log = $conn->prepare("
-            INSERT INTO audit_trail (action, description, user)
-            VALUES ('ADD', ?, ?)
-        ");
-
-        $log->bind_param("ss", $desc, $username);
-
-        $log->execute();
-
-        $log->close();
+        error_log(
+            "BPSO blotter: failed to add record. Error: " .
+            $stmt->error
+        );
 
         $stmt->close();
 
-        header("Location: blotter.php");
-
-        exit();
+        http_response_code(500);
+        die("Failed to add blotter record.");
     }
 
     $stmt->close();
 
-    die("Failed to add blotter record.");
-}
+    $desc = "Added blotter record ($complainants - $complaint) at $satellite_name";
 
+    $log = $conn->prepare("
+        INSERT INTO audit_trail
+        (action, description, user)
+        VALUES ('ADD', ?, ?)
+    ");
+
+    if ($log) {
+
+        $log->bind_param("ss", $desc, $username);
+
+        if (!$log->execute()) {
+            error_log(
+                "BPSO blotter: failed to create ADD audit log. Error: " .
+                $log->error
+            );
+        }
+
+        $log->close();
+    } else {
+        error_log("BPSO blotter: failed to prepare ADD audit log.");
+    }
+
+    header("Location: blotter.php");
+
+    exit();
+}
 
 /* =========================================================
    UPDATE RECORD
@@ -190,47 +263,75 @@ if (isset($_POST['update'])) {
 
     $id = (int)($_POST['id'] ?? 0);
 
+    if ($id <= 0) {
+        http_response_code(400);
+        die("Invalid record.");
+    }
+
     $checkLock = $conn->prepare("
-        SELECT * FROM blotter
-        WHERE id = ? AND satellite_id = ?
+        SELECT *
+        FROM blotter
+        WHERE id = ?
+        AND satellite_id = ?
         LIMIT 1
     ");
 
+    if (!$checkLock) {
+        error_log("BPSO blotter: failed to prepare update verification.");
+        http_response_code(500);
+        die("Unable to verify blotter record.");
+    }
+
     $checkLock->bind_param("ii", $id, $satellite_id);
 
-    $checkLock->execute();
+    if (!$checkLock->execute()) {
+
+        $checkLock->close();
+
+        error_log("BPSO blotter: failed to execute update verification.");
+
+        http_response_code(500);
+        die("Unable to verify blotter record.");
+    }
 
     $currentData = $checkLock->get_result()->fetch_assoc();
 
     $checkLock->close();
 
     if (!$currentData) {
+        http_response_code(404);
         die("Record not found or you are not authorized to modify this record.");
     }
+
+    /* Closed records cannot be modified. */
 
     if (
         in_array(
             $currentData['status'],
-            ["Resolved", "Transferred to Lupon", "Rejected"],
+            [
+                "Resolved",
+                "Transferred to Lupon",
+                "Rejected"
+            ],
             true
         )
     ) {
-        die("Error: This record is locked.");
+        http_response_code(403);
+        die("This record is locked.");
     }
 
     $status = trim($_POST['status'] ?? 'Pending');
-    
-    $allowed_statuses = [
-    'Pending',
-    'Resolved',
-    'Rejected',
-    'Transferred to Lupon'
-];
 
-if (!in_array($status, $allowed_statuses, true)) {
-    http_response_code(400);
-    die("Invalid status.");
-}
+    /*
+     * UPDATE is only for normal editable records.
+     *
+     * Resolved, Rejected, and Transferred to Lupon
+     * have their own protected actions.
+     */
+    if ($status !== 'Pending') {
+        http_response_code(400);
+        die("Invalid status for this update action.");
+    }
 
     $summary = trim($_POST['summary_remarks'] ?? '');
 
@@ -240,9 +341,20 @@ if (!in_array($status, $allowed_statuses, true)) {
 
     $updateStmt = $conn->prepare("
         UPDATE blotter
-        SET officer = ?, status = ?, summary_remarks = ?, response = ?
-        WHERE id = ? AND satellite_id = ?
+        SET
+            officer = ?,
+            status = ?,
+            summary_remarks = ?,
+            response = ?
+        WHERE id = ?
+        AND satellite_id = ?
     ");
+
+    if (!$updateStmt) {
+        error_log("BPSO blotter: failed to prepare update.");
+        http_response_code(500);
+        die("Failed to prepare blotter update.");
+    }
 
     $updateStmt->bind_param(
         "ssssii",
@@ -254,33 +366,49 @@ if (!in_array($status, $allowed_statuses, true)) {
         $satellite_id
     );
 
-    if ($updateStmt->execute()) {
+    if (!$updateStmt->execute()) {
 
-        $desc = "Updated blotter ({$currentData['complainants']} - Status: $status) at $satellite_name";
-
-        $log = $conn->prepare("
-            INSERT INTO audit_trail (action, description, user)
-            VALUES ('UPDATE', ?, ?)
-        ");
-
-        $log->bind_param("ss", $desc, $username);
-
-        $log->execute();
-
-        $log->close();
+        error_log(
+            "BPSO blotter: update failed. Error: " .
+            $updateStmt->error
+        );
 
         $updateStmt->close();
 
-        header("Location: blotter.php?updated=1");
-
-        exit();
+        http_response_code(500);
+        die("Failed to update blotter record.");
     }
 
     $updateStmt->close();
 
-    die("Failed to update blotter record.");
-}
+    $desc = "Updated blotter ({$currentData['complainants']} - Status: $status) at $satellite_name";
 
+    $log = $conn->prepare("
+        INSERT INTO audit_trail
+        (action, description, user)
+        VALUES ('UPDATE', ?, ?)
+    ");
+
+    if ($log) {
+
+        $log->bind_param("ss", $desc, $username);
+
+        if (!$log->execute()) {
+            error_log(
+                "BPSO blotter: failed to create UPDATE audit log. Error: " .
+                $log->error
+            );
+        }
+
+        $log->close();
+    } else {
+        error_log("BPSO blotter: failed to prepare UPDATE audit log.");
+    }
+
+    header("Location: blotter.php?updated=1");
+
+    exit();
+}
 
 /* =========================================================
    RESOLVE RECORD
@@ -294,28 +422,54 @@ if (isset($_POST['resolve'])) {
 
     $response = trim($_POST['response'] ?? '');
 
+    if ($id <= 0) {
+        http_response_code(400);
+        die("Invalid record.");
+    }
+
     $checkLock = $conn->prepare("
-        SELECT * FROM blotter
-        WHERE id = ? AND satellite_id = ?
+        SELECT *
+        FROM blotter
+        WHERE id = ?
+        AND satellite_id = ?
         LIMIT 1
     ");
 
+    if (!$checkLock) {
+        error_log("BPSO blotter: failed to prepare resolve verification.");
+        http_response_code(500);
+        die("Unable to verify blotter record.");
+    }
+
     $checkLock->bind_param("ii", $id, $satellite_id);
 
-    $checkLock->execute();
+    if (!$checkLock->execute()) {
+
+        $checkLock->close();
+
+        error_log("BPSO blotter: resolve verification failed.");
+
+        http_response_code(500);
+        die("Unable to verify blotter record.");
+    }
 
     $currentData = $checkLock->get_result()->fetch_assoc();
 
     $checkLock->close();
 
     if (!$currentData) {
+        http_response_code(404);
         die("Record not found or you are not authorized to modify this record.");
     }
 
     if (
         in_array(
             $currentData['status'],
-            ["Resolved", "Rejected", "Transferred to Lupon"],
+            [
+                "Resolved",
+                "Rejected",
+                "Transferred to Lupon"
+            ],
             true
         )
     ) {
@@ -330,9 +484,19 @@ if (isset($_POST['resolve'])) {
 
     $updateStmt = $conn->prepare("
         UPDATE blotter
-        SET status = 'Resolved', officer = ?, response = ?
-        WHERE id = ? AND satellite_id = ?
+        SET
+            status = 'Resolved',
+            officer = ?,
+            response = ?
+        WHERE id = ?
+        AND satellite_id = ?
     ");
+
+    if (!$updateStmt) {
+        error_log("BPSO blotter: failed to prepare resolution update.");
+        http_response_code(500);
+        die("Failed to prepare resolution update.");
+    }
 
     $updateStmt->bind_param(
         "ssii",
@@ -342,33 +506,49 @@ if (isset($_POST['resolve'])) {
         $satellite_id
     );
 
-    if ($updateStmt->execute()) {
+    if (!$updateStmt->execute()) {
 
-        $desc = "Resolved blotter ({$currentData['complainants']} - {$currentData['complaint']}) at $satellite_name";
-
-        $log = $conn->prepare("
-            INSERT INTO audit_trail (action, description, user)
-            VALUES ('UPDATE', ?, ?)
-        ");
-
-        $log->bind_param("ss", $desc, $username);
-
-        $log->execute();
-
-        $log->close();
+        error_log(
+            "BPSO blotter: resolution update failed. Error: " .
+            $updateStmt->error
+        );
 
         $updateStmt->close();
 
-        header("Location: blotter.php?updated=1");
-
-        exit();
+        http_response_code(500);
+        die("Failed to resolve blotter record.");
     }
 
     $updateStmt->close();
 
-    die("Failed to resolve blotter record.");
-}
+    $desc = "Resolved blotter ({$currentData['complainants']} - {$currentData['complaint']}) at $satellite_name";
 
+    $log = $conn->prepare("
+        INSERT INTO audit_trail
+        (action, description, user)
+        VALUES ('UPDATE', ?, ?)
+    ");
+
+    if ($log) {
+
+        $log->bind_param("ss", $desc, $username);
+
+        if (!$log->execute()) {
+            error_log(
+                "BPSO blotter: failed to create RESOLVE audit log. Error: " .
+                $log->error
+            );
+        }
+
+        $log->close();
+    } else {
+        error_log("BPSO blotter: failed to prepare RESOLVE audit log.");
+    }
+
+    header("Location: blotter.php?updated=1");
+
+    exit();
+}
 
 /* =========================================================
    REJECT RECORD
@@ -382,6 +562,11 @@ if (isset($_POST['reject'])) {
 
     $response = trim($_POST['response'] ?? '');
 
+    if ($id <= 0) {
+        http_response_code(400);
+        die("Invalid record.");
+    }
+
     if ($response === '') {
 
         echo "<script>
@@ -393,27 +578,48 @@ if (isset($_POST['reject'])) {
     }
 
     $checkLock = $conn->prepare("
-        SELECT * FROM blotter
-        WHERE id = ? AND satellite_id = ?
+        SELECT *
+        FROM blotter
+        WHERE id = ?
+        AND satellite_id = ?
         LIMIT 1
     ");
 
+    if (!$checkLock) {
+        error_log("BPSO blotter: failed to prepare rejection verification.");
+        http_response_code(500);
+        die("Unable to verify blotter record.");
+    }
+
     $checkLock->bind_param("ii", $id, $satellite_id);
 
-    $checkLock->execute();
+    if (!$checkLock->execute()) {
+
+        $checkLock->close();
+
+        error_log("BPSO blotter: rejection verification failed.");
+
+        http_response_code(500);
+        die("Unable to verify blotter record.");
+    }
 
     $currentData = $checkLock->get_result()->fetch_assoc();
 
     $checkLock->close();
 
     if (!$currentData) {
+        http_response_code(404);
         die("Record not found or you are not authorized to modify this record.");
     }
 
     if (
         in_array(
             $currentData['status'],
-            ["Resolved", "Rejected", "Transferred to Lupon"],
+            [
+                "Resolved",
+                "Rejected",
+                "Transferred to Lupon"
+            ],
             true
         )
     ) {
@@ -428,9 +634,19 @@ if (isset($_POST['reject'])) {
 
     $updateStmt = $conn->prepare("
         UPDATE blotter
-        SET status = 'Rejected', officer = ?, response = ?
-        WHERE id = ? AND satellite_id = ?
+        SET
+            status = 'Rejected',
+            officer = ?,
+            response = ?
+        WHERE id = ?
+        AND satellite_id = ?
     ");
+
+    if (!$updateStmt) {
+        error_log("BPSO blotter: failed to prepare rejection update.");
+        http_response_code(500);
+        die("Failed to prepare rejection update.");
+    }
 
     $updateStmt->bind_param(
         "ssii",
@@ -440,33 +656,49 @@ if (isset($_POST['reject'])) {
         $satellite_id
     );
 
-    if ($updateStmt->execute()) {
+    if (!$updateStmt->execute()) {
 
-        $desc = "Rejected blotter ({$currentData['complainants']} - {$currentData['complaint']}) at $satellite_name";
-
-        $log = $conn->prepare("
-            INSERT INTO audit_trail (action, description, user)
-            VALUES ('UPDATE', ?, ?)
-        ");
-
-        $log->bind_param("ss", $desc, $username);
-
-        $log->execute();
-
-        $log->close();
+        error_log(
+            "BPSO blotter: rejection update failed. Error: " .
+            $updateStmt->error
+        );
 
         $updateStmt->close();
 
-        header("Location: blotter.php?updated=1");
-
-        exit();
+        http_response_code(500);
+        die("Failed to reject blotter record.");
     }
 
     $updateStmt->close();
 
-    die("Failed to reject blotter record.");
-}
+    $desc = "Rejected blotter ({$currentData['complainants']} - {$currentData['complaint']}) at $satellite_name";
 
+    $log = $conn->prepare("
+        INSERT INTO audit_trail
+        (action, description, user)
+        VALUES ('UPDATE', ?, ?)
+    ");
+
+    if ($log) {
+
+        $log->bind_param("ss", $desc, $username);
+
+        if (!$log->execute()) {
+            error_log(
+                "BPSO blotter: failed to create REJECT audit log. Error: " .
+                $log->error
+            );
+        }
+
+        $log->close();
+    } else {
+        error_log("BPSO blotter: failed to prepare REJECT audit log.");
+    }
+
+    header("Location: blotter.php?updated=1");
+
+    exit();
+}
 
 /* =========================================================
    DELETE RECORD
@@ -476,21 +708,43 @@ if (isset($_POST['delete'])) {
 
     $id = (int)($_POST['delete_id'] ?? 0);
 
+    if ($id <= 0) {
+        http_response_code(400);
+        die("Invalid record.");
+    }
+
     $checkLock = $conn->prepare("
-        SELECT * FROM blotter
-        WHERE id = ? AND satellite_id = ?
+        SELECT *
+        FROM blotter
+        WHERE id = ?
+        AND satellite_id = ?
         LIMIT 1
     ");
 
+    if (!$checkLock) {
+        error_log("BPSO blotter: failed to prepare delete verification.");
+        http_response_code(500);
+        die("Unable to verify blotter record.");
+    }
+
     $checkLock->bind_param("ii", $id, $satellite_id);
 
-    $checkLock->execute();
+    if (!$checkLock->execute()) {
+
+        $checkLock->close();
+
+        error_log("BPSO blotter: delete verification failed.");
+
+        http_response_code(500);
+        die("Unable to verify blotter record.");
+    }
 
     $data = $checkLock->get_result()->fetch_assoc();
 
     $checkLock->close();
 
     if (!$data) {
+        http_response_code(404);
         die("Record not found or you are not authorized to delete this record.");
     }
 
@@ -504,38 +758,66 @@ if (isset($_POST['delete'])) {
             window.location='blotter.php';
         </script>";
 
-    } else {
+        exit();
+    }
 
-        $desc = "Deleted blotter ({$data['complainants']} - {$data['complaint']}) at $satellite_name";
+    $desc = "Deleted blotter ({$data['complainants']} - {$data['complaint']}) at $satellite_name";
 
-        $log = $conn->prepare("
-            INSERT INTO audit_trail (action, description, user)
-            VALUES ('DELETE', ?, ?)
-        ");
+    $log = $conn->prepare("
+        INSERT INTO audit_trail
+        (action, description, user)
+        VALUES ('DELETE', ?, ?)
+    ");
+
+    if ($log) {
 
         $log->bind_param("ss", $desc, $username);
 
-        $log->execute();
+        if (!$log->execute()) {
+            error_log(
+                "BPSO blotter: failed to create DELETE audit log. Error: " .
+                $log->error
+            );
+        }
 
         $log->close();
+    } else {
+        error_log("BPSO blotter: failed to prepare DELETE audit log.");
+    }
 
-        $delStmt = $conn->prepare("
-            DELETE FROM blotter
-            WHERE id = ? AND satellite_id = ?
-        ");
+    $delStmt = $conn->prepare("
+        DELETE FROM blotter
+        WHERE id = ?
+        AND satellite_id = ?
+    ");
 
-        $delStmt->bind_param("ii", $id, $satellite_id);
+    if (!$delStmt) {
+        error_log("BPSO blotter: failed to prepare delete.");
+        http_response_code(500);
+        die("Failed to prepare delete request.");
+    }
 
-        $delStmt->execute();
+    $delStmt->bind_param("ii", $id, $satellite_id);
+
+    if (!$delStmt->execute()) {
+
+        error_log(
+            "BPSO blotter: delete failed. Error: " .
+            $delStmt->error
+        );
 
         $delStmt->close();
 
-        header("Location: blotter.php");
+        http_response_code(500);
+        die("Failed to delete blotter record.");
     }
+
+    $delStmt->close();
+
+    header("Location: blotter.php");
 
     exit();
 }
-
 
 /* =========================================================
    TRANSFER TO LUPON
@@ -545,168 +827,425 @@ if (isset($_POST['transfer'])) {
 
     $id = (int)($_POST['id'] ?? 0);
 
-    /* Only retrieve a blotter record belonging to this satellite. */
+    if ($id <= 0) {
+        http_response_code(400);
+        die("Invalid record.");
+    }
+
+    /*
+     * First verification.
+     * The record must belong to the logged-in BPSO satellite.
+     */
 
     $getStmt = $conn->prepare("
-        SELECT * FROM blotter
-        WHERE id = ? AND satellite_id = ?
+        SELECT *
+        FROM blotter
+        WHERE id = ?
+        AND satellite_id = ?
         LIMIT 1
     ");
 
+    if (!$getStmt) {
+        error_log("BPSO blotter: failed to prepare transfer verification.");
+        http_response_code(500);
+        die("Unable to verify blotter record.");
+    }
+
     $getStmt->bind_param("ii", $id, $satellite_id);
 
-    $getStmt->execute();
+    if (!$getStmt->execute()) {
+
+        $getStmt->close();
+
+        error_log("BPSO blotter: transfer verification failed.");
+
+        http_response_code(500);
+        die("Unable to verify blotter record.");
+    }
 
     $data = $getStmt->get_result()->fetch_assoc();
 
     $getStmt->close();
 
     if (!$data) {
+        http_response_code(404);
         die("Record not found or you are not authorized to transfer this record.");
     }
 
-    if ($data['status'] === "Resolved") {
+    /*
+     * Closed records cannot be transferred.
+     */
+
+    if (
+        in_array(
+            $data['status'],
+            [
+                "Resolved",
+                "Rejected",
+                "Transferred to Lupon"
+            ],
+            true
+        )
+    ) {
 
         echo "<script>
-            alert('Resolved cannot be transferred.');
+            alert('This record is already closed and cannot be transferred to Lupon.');
             window.location='blotter.php';
         </script>";
 
         exit();
     }
 
-    if ($data['status'] === "Transferred to Lupon") {
+    $case_type = trim($data['complaint'] ?? '');
 
-        echo "<script>
-            alert('This record has already been transferred to Lupon.');
-            window.location='blotter.php';
-        </script>";
+    $complainant_name = trim($data['complainants'] ?? '');
 
-        exit();
+    $complaint_details = trim($data['summary_remarks'] ?? '');
+
+    $date_filed = trim($data['date'] ?? '');
+
+    if (
+        $case_type === '' ||
+        $complainant_name === '' ||
+        $date_filed === ''
+    ) {
+        http_response_code(400);
+        die("The blotter record contains incomplete information and cannot be transferred.");
     }
 
-    $case_type = $data['complaint'];
+    $dateObj = DateTime::createFromFormat('Y-m-d', $date_filed);
 
-    $complainant_name = $data['complainants'];
-
-    $complaint_details = $data['summary_remarks'];
-
-    $date_filed = $data['date'];
+    if (
+        !$dateObj ||
+        $dateObj->format('Y-m-d') !== $date_filed
+    ) {
+        http_response_code(400);
+        die("The blotter record contains an invalid filing date.");
+    }
 
     $case_no = "Case No. " . date("Y") . "-" . $id;
 
-    /* Check if this case already exists. */
+    /*
+     * =====================================================
+     * TRANSFER TRANSACTION
+     * =====================================================
+     *
+     * The entire transfer is handled as one transaction.
+     *
+     * 1. Lock and re-check the blotter record.
+     * 2. Check whether the Lupon case already exists.
+     * 3. Create the case if needed.
+     * 4. Update the blotter status.
+     * 5. Add audit trail.
+     * 6. Commit everything.
+     *
+     * If anything fails, rollback everything.
+     */
 
-    $checkStmt = $conn->prepare("
-        SELECT case_no
-        FROM cases
-        WHERE case_no = ?
-        LIMIT 1
-    ");
+    $transactionStarted = false;
 
-    $checkStmt->bind_param("s", $case_no);
+    try {
 
-    $checkStmt->execute();
+        $conn->begin_transaction();
 
-    $duplicate = $checkStmt->get_result()->fetch_assoc();
+        $transactionStarted = true;
 
-    $checkStmt->close();
+        /*
+         * Re-check the blotter record inside the transaction.
+         * FOR UPDATE prevents another transaction from changing
+         * the record while this transfer is being processed.
+         */
 
-    if ($duplicate) {
+        $lockStmt = $conn->prepare("
+            SELECT *
+            FROM blotter
+            WHERE id = ?
+            AND satellite_id = ?
+            LIMIT 1
+            FOR UPDATE
+        ");
+
+        if (!$lockStmt) {
+            throw new Exception("Failed to prepare blotter lock.");
+        }
+
+        $lockStmt->bind_param(
+            "ii",
+            $id,
+            $satellite_id
+        );
+
+        if (!$lockStmt->execute()) {
+
+            $lockStmt->close();
+
+            throw new Exception("Failed to lock blotter record.");
+        }
+
+        $lockedData = $lockStmt->get_result()->fetch_assoc();
+
+        $lockStmt->close();
+
+        if (!$lockedData) {
+            throw new Exception("Blotter record was not found.");
+        }
+
+        /*
+         * Re-check status inside the transaction.
+         */
+
+        if (
+            in_array(
+                $lockedData['status'],
+                [
+                    "Resolved",
+                    "Rejected",
+                    "Transferred to Lupon"
+                ],
+                true
+            )
+        ) {
+            throw new Exception("Blotter record is already closed.");
+        }
+
+        /*
+         * Use the locked database values rather than trusting
+         * the earlier SELECT.
+         */
+
+        $case_type = trim($lockedData['complaint'] ?? '');
+
+        $complainant_name = trim($lockedData['complainants'] ?? '');
+
+        $complaint_details = trim(
+            $lockedData['summary_remarks'] ?? ''
+        );
+
+        $date_filed = trim($lockedData['date'] ?? '');
+
+        if (
+            $case_type === '' ||
+            $complainant_name === '' ||
+            $date_filed === ''
+        ) {
+            throw new Exception("Incomplete blotter information.");
+        }
+
+        /*
+         * =====================================================
+         * CHECK EXISTING CASE
+         * =====================================================
+         */
+
+        $checkStmt = $conn->prepare("
+            SELECT case_no
+            FROM cases
+            WHERE case_no = ?
+            LIMIT 1
+            FOR UPDATE
+        ");
+
+        if (!$checkStmt) {
+            throw new Exception("Failed to prepare case verification.");
+        }
+
+        $checkStmt->bind_param(
+            "s",
+            $case_no
+        );
+
+        if (!$checkStmt->execute()) {
+
+            $checkStmt->close();
+
+            throw new Exception("Failed to verify Lupon case.");
+        }
+
+        $duplicate = $checkStmt->get_result()->fetch_assoc();
+
+        $checkStmt->close();
+
+        /*
+         * =====================================================
+         * CREATE CASE IF IT DOES NOT EXIST
+         * =====================================================
+         */
+
+        if (!$duplicate) {
+
+            /*
+             * IMPORTANT:
+             * satellite_id is copied to cases so Lupon can
+             * restrict cases to the same satellite.
+             */
+
+            $insertCase = $conn->prepare("
+                INSERT INTO cases
+                (
+                    satellite_id,
+                    case_no,
+                    case_type,
+                    complainant_name,
+                    complainant_contact,
+                    complainant_address,
+                    respondent_name,
+                    respondent_contact,
+                    respondent_address,
+                    status,
+                    date_filed,
+                    complaint_details,
+                    summary_discussions
+                )
+                VALUES
+                (
+                    ?, ?, ?, ?, 'N/A', 'N/A',
+                    'To be identified', 'N/A', 'N/A',
+                    'Pending', ?, ?, ''
+                )
+            ");
+
+            if (!$insertCase) {
+                throw new Exception("Failed to prepare Lupon case.");
+            }
+
+            $insertCase->bind_param(
+                "isssss",
+                $satellite_id,
+                $case_no,
+                $case_type,
+                $complainant_name,
+                $date_filed,
+                $complaint_details
+            );
+
+            if (!$insertCase->execute()) {
+
+                $insertError = $insertCase->error;
+
+                $insertCase->close();
+
+                throw new Exception(
+                    "Failed to create Lupon case: " . $insertError
+                );
+            }
+
+            $insertCase->close();
+        }
+
+        /*
+         * =====================================================
+         * UPDATE BLOTTER STATUS
+         * =====================================================
+         */
 
         $updateStmt = $conn->prepare("
             UPDATE blotter
             SET status = 'Transferred to Lupon'
-            WHERE id = ? AND satellite_id = ?
+            WHERE id = ?
+            AND satellite_id = ?
+            AND status = 'Pending'
         ");
 
-        $updateStmt->bind_param("ii", $id, $satellite_id);
+        if (!$updateStmt) {
+            throw new Exception(
+                "Failed to prepare blotter transfer update."
+            );
+        }
 
-        $updateStmt->execute();
+        $updateStmt->bind_param(
+            "ii",
+            $id,
+            $satellite_id
+        );
+
+        if (!$updateStmt->execute()) {
+
+            $updateError = $updateStmt->error;
+
+            $updateStmt->close();
+
+            throw new Exception(
+                "Failed to update blotter status: " . $updateError
+            );
+        }
+
+        /*
+         * Exactly one record must be updated.
+         */
+
+        if ($updateStmt->affected_rows !== 1) {
+
+            $updateStmt->close();
+
+            throw new Exception(
+                "Blotter status could not be updated."
+            );
+        }
 
         $updateStmt->close();
 
-        header("Location: blotter.php");
+        /*
+         * =====================================================
+         * AUDIT TRAIL
+         * =====================================================
+         */
 
-        exit();
-    }
+        $desc = "Transferred blotter ({$lockedData['complainants']}) to Lupon at $satellite_name";
 
-    /*
-       IMPORTANT: satellite_id is copied to cases so the Lupon
-       office can later restrict cases to the same satellite.
-    */
+        $log = $conn->prepare("
+            INSERT INTO audit_trail
+            (action, description, user)
+            VALUES ('UPDATE', ?, ?)
+        ");
 
-    $insertCase = $conn->prepare("
-        INSERT INTO cases
-        (
-            satellite_id,
-            case_no,
-            case_type,
-            complainant_name,
-            complainant_contact,
-            complainant_address,
-            respondent_name,
-            respondent_contact,
-            respondent_address,
-            status,
-            date_filed,
-            complaint_details,
-            summary_discussions
-        )
-        VALUES
-        (
-            ?, ?, ?, ?, 'N/A', 'N/A',
-            'To be identified', 'N/A', 'N/A',
-            'Pending', ?, ?, ''
-        )
-    ");
+        if (!$log) {
+            throw new Exception("Failed to prepare audit record.");
+        }
 
-    $insertCase->bind_param(
-        "isssss",
-        $satellite_id,
-        $case_no,
-        $case_type,
-        $complainant_name,
-        $date_filed,
-        $complaint_details
-    );
-
-    if (!$insertCase->execute()) {
-
-        $insertCase->close();
-
-        die(
-            "Failed to transfer the blotter record to Lupon: " .
-            htmlspecialchars($conn->error)
+        $log->bind_param(
+            "ss",
+            $desc,
+            $username
         );
+
+        if (!$log->execute()) {
+
+            $logError = $log->error;
+
+            $log->close();
+
+            throw new Exception(
+                "Failed to create audit record: " . $logError
+            );
+        }
+
+        $log->close();
+
+        /*
+         * =====================================================
+         * COMMIT
+         * =====================================================
+         */
+
+        $conn->commit();
+
+        $transactionStarted = false;
+
+    } catch (Throwable $e) {
+
+        if ($transactionStarted) {
+            $conn->rollback();
+        }
+
+        error_log(
+            "BPSO blotter transfer failed: " .
+            $e->getMessage()
+        );
+
+        http_response_code(500);
+
+        die("Failed to transfer the blotter record to Lupon.");
     }
-
-    $insertCase->close();
-
-    $updateStmt = $conn->prepare("
-        UPDATE blotter
-        SET status = 'Transferred to Lupon'
-        WHERE id = ? AND satellite_id = ?
-    ");
-
-    $updateStmt->bind_param("ii", $id, $satellite_id);
-
-    $updateStmt->execute();
-
-    $updateStmt->close();
-
-    $desc = "Transferred blotter ({$data['complainants']}) to Lupon at $satellite_name";
-
-    $log = $conn->prepare("
-        INSERT INTO audit_trail (action, description, user)
-        VALUES ('UPDATE', ?, ?)
-    ");
-
-    $log->bind_param("ss", $desc, $username);
-
-    $log->execute();
-
-    $log->close();
 
     header("Location: blotter.php");
 
@@ -723,11 +1262,15 @@ if (isset($_POST['transfer'])) {
 
     <title>Blotter Records</title>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-        rel="stylesheet">
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
 
-    <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    >
 
     <link rel="stylesheet" href="main.css">
 
@@ -741,29 +1284,41 @@ if (isset($_POST['transfer'])) {
 
         <div class="content">
 
-            <h2 class="mb-4 fw-bold">Blotter Records</h2>
+            <h2 class="mb-4 fw-bold">
+                Blotter Records
+            </h2>
 
             <p class="text-muted mb-3">
 
                 <i class="fa-solid fa-location-dot"></i>
 
-                <?= htmlspecialchars($satellite_name) ?>
+                <?= htmlspecialchars(
+                    $satellite_name,
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>
 
             </p>
 
             <div class="d-flex justify-content-between mb-3">
 
-                <input type="text"
+                <input
+                    type="text"
                     id="searchInput"
                     onkeyup="searchTable()"
                     class="form-control w-25"
-                    placeholder="Search...">
+                    placeholder="Search..."
+                >
 
-                <button class="btn btn-primary"
+                <button
+                    class="btn btn-primary"
                     data-bs-toggle="modal"
-                    data-bs-target="#addModal">
+                    data-bs-target="#addModal"
+                >
 
-                    <i class="fa fa-plus"></i> Add Record
+                    <i class="fa fa-plus"></i>
+
+                    Add Record
 
                 </button>
 
@@ -771,7 +1326,10 @@ if (isset($_POST['transfer'])) {
 
             <div class="card shadow-sm">
 
-                <table class="table table-hover" id="blotterTable">
+                <table
+                    class="table table-hover"
+                    id="blotterTable"
+                >
 
                     <thead class="table-light">
 
@@ -804,41 +1362,74 @@ if (isset($_POST['transfer'])) {
                             ORDER BY id DESC
                         ");
 
-                        $listStmt->bind_param("i", $satellite_id);
+                        if (!$listStmt) {
+                            error_log(
+                                "BPSO blotter: failed to prepare list query."
+                            );
 
-                        $listStmt->execute();
+                            die("Unable to load blotter records.");
+                        }
+
+                        $listStmt->bind_param(
+                            "i",
+                            $satellite_id
+                        );
+
+                        if (!$listStmt->execute()) {
+
+                            $listStmt->close();
+
+                            error_log(
+                                "BPSO blotter: failed to load records."
+                            );
+
+                            die("Unable to load blotter records.");
+                        }
 
                         $result = $listStmt->get_result();
 
                         while ($row = $result->fetch_assoc()) {
 
-                            $raw_status = trim($row['status']);
+                            $raw_status = trim(
+                                $row['status'] ?? ''
+                            );
 
-                            $check_status = strtolower($raw_status);
+                            $check_status = strtolower(
+                                $raw_status
+                            );
 
-                            $display_status = strtoupper($raw_status);
+                            $display_status = strtoupper(
+                                $raw_status
+                            );
 
                             if ($check_status === "resolved") {
 
                                 $badge = "bg-success";
 
-                            } elseif ($check_status === "transferred to lupon") {
+                            } elseif (
+                                $check_status ===
+                                "transferred to lupon"
+                            ) {
 
                                 $badge = "bg-primary";
 
-                            } elseif ($check_status === "rejected") {
+                            } elseif (
+                                $check_status === "rejected"
+                            ) {
 
                                 $badge = "bg-danger";
 
                             } else {
 
-                                $badge = "bg-warning text-dark";
+                                $badge =
+                                    "bg-warning text-dark";
 
                             }
 
                             $isLocked = (
                                 $check_status === "resolved" ||
-                                $check_status === "transferred to lupon"
+                                $check_status ===
+                                "transferred to lupon"
                             );
 
                         ?>
@@ -846,26 +1437,60 @@ if (isset($_POST['transfer'])) {
                         <tr>
 
                             <td>
-                                <?php echo htmlspecialchars($row['officer']); ?>
-                            </td>
 
-                            <td>
-                                <?php echo htmlspecialchars($row['complaint']); ?>
-                            </td>
+                                <?= htmlspecialchars(
+                                    $row['officer'] ?? '',
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>
 
-                            <td>
-                                <?php echo htmlspecialchars($row['complainants']); ?>
-                            </td>
-
-                            <td>
-                                <?php echo htmlspecialchars($row['date']); ?>
                             </td>
 
                             <td>
 
-                                <span class="badge <?php echo $badge; ?>">
+                                <?= htmlspecialchars(
+                                    $row['complaint'] ?? '',
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>
 
-                                    <?php echo htmlspecialchars($display_status); ?>
+                            </td>
+
+                            <td>
+
+                                <?= htmlspecialchars(
+                                    $row['complainants'] ?? '',
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>
+
+                            </td>
+
+                            <td>
+
+                                <?= htmlspecialchars(
+                                    $row['date'] ?? '',
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>
+
+                            </td>
+
+                            <td>
+
+                                <span
+                                    class="badge <?= htmlspecialchars(
+                                        $badge,
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    ) ?>"
+                                >
+
+                                    <?= htmlspecialchars(
+                                        $display_status,
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    ) ?>
 
                                 </span>
 
@@ -875,8 +1500,10 @@ if (isset($_POST['transfer'])) {
 
                                 <div class="dropdown">
 
-                                    <button class="btn btn-light btn-sm"
-                                        data-bs-toggle="dropdown">
+                                    <button
+                                        class="btn btn-light btn-sm"
+                                        data-bs-toggle="dropdown"
+                                    >
 
                                         <i class="fa fa-ellipsis-v"></i>
 
@@ -886,12 +1513,20 @@ if (isset($_POST['transfer'])) {
 
                                         <li>
 
-                                            <button class="dropdown-item"
+                                            <button
+                                                class="dropdown-item"
                                                 onclick='openManageModal(<?= htmlspecialchars(
-    json_encode($row, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT),
-    ENT_QUOTES,
-    'UTF-8'
-) ?>)'
+                                                    json_encode(
+                                                        $row,
+                                                        JSON_HEX_TAG |
+                                                        JSON_HEX_AMP |
+                                                        JSON_HEX_APOS |
+                                                        JSON_HEX_QUOT
+                                                    ),
+                                                    ENT_QUOTES,
+                                                    'UTF-8'
+                                                ) ?>)'
+                                            >
 
                                                 <i class="fa fa-file-alt me-2 text-primary"></i>
 
@@ -905,7 +1540,9 @@ if (isset($_POST['transfer'])) {
 
                                             <?php if ($isLocked): ?>
 
-                                                <button class="dropdown-item disabled text-muted">
+                                                <button
+                                                    class="dropdown-item disabled text-muted"
+                                                >
 
                                                     <i class="fa fa-ban me-2"></i>
 
@@ -915,23 +1552,33 @@ if (isset($_POST['transfer'])) {
 
                                             <?php else: ?>
 
-                                                <!-- CSRF-PROTECTED DELETE -->
-
-                                                <form method="POST"
+                                                <form
+                                                    method="POST"
                                                     class="m-0"
-                                                    onsubmit="return confirm('Are you sure?');">
+                                                    onsubmit="return confirm('Are you sure?');"
+                                                >
 
-                                                    <input type="hidden"
+                                                    <input
+                                                        type="hidden"
                                                         name="csrf_token"
-                                                        value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
+                                                        value="<?= htmlspecialchars(
+                                                            $csrf_token,
+                                                            ENT_QUOTES,
+                                                            'UTF-8'
+                                                        ) ?>"
+                                                    >
 
-                                                    <input type="hidden"
+                                                    <input
+                                                        type="hidden"
                                                         name="delete_id"
-                                                        value="<?= (int)$row['id'] ?>">
+                                                        value="<?= (int)$row['id'] ?>"
+                                                    >
 
-                                                    <button type="submit"
+                                                    <button
+                                                        type="submit"
                                                         name="delete"
-                                                        class="dropdown-item text-danger">
+                                                        class="dropdown-item text-danger"
+                                                    >
 
                                                         <i class="fa fa-trash me-2"></i>
 
@@ -959,6 +1606,8 @@ if (isset($_POST['transfer'])) {
 
                 </table>
 
+                <?php $listStmt->close(); ?>
+
             </div>
 
         </div>
@@ -978,11 +1627,15 @@ if (isset($_POST['transfer'])) {
 
                 <form method="POST">
 
-                    <!-- CSRF -->
-
-                    <input type="hidden"
+                    <input
+                        type="hidden"
                         name="csrf_token"
-                        value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
+                        value="<?= htmlspecialchars(
+                            $csrf_token,
+                            ENT_QUOTES,
+                            'UTF-8'
+                        ) ?>"
+                    >
 
                     <div class="modal-header">
 
@@ -990,10 +1643,11 @@ if (isset($_POST['transfer'])) {
                             New Blotter Entry
                         </h5>
 
-                        <button type="button"
+                        <button
+                            type="button"
                             class="btn-close"
-                            data-bs-dismiss="modal">
-                        </button>
+                            data-bs-dismiss="modal"
+                        ></button>
 
                     </div>
 
@@ -1007,11 +1661,17 @@ if (isset($_POST['transfer'])) {
                                     Complaint Type
                                 </label>
 
-                                <select name="complaint"
+                                <select
+                                    name="complaint"
                                     class="form-select"
-                                    required>
+                                    required
+                                >
 
-                                    <option value="" selected disabled>
+                                    <option
+                                        value=""
+                                        selected
+                                        disabled
+                                    >
                                         -- Select Case Type --
                                     </option>
 
@@ -1117,10 +1777,12 @@ if (isset($_POST['transfer'])) {
                                     Complainant Name
                                 </label>
 
-                                <input type="text"
+                                <input
+                                    type="text"
                                     name="complainants"
                                     class="form-control"
-                                    required>
+                                    required
+                                >
 
                             </div>
 
@@ -1130,11 +1792,13 @@ if (isset($_POST['transfer'])) {
                                     Date
                                 </label>
 
-                                <input type="date"
+                                <input
+                                    type="date"
                                     name="date"
                                     class="form-control"
                                     value="<?php echo date('Y-m-d'); ?>"
-                                    required>
+                                    required
+                                >
 
                             </div>
 
@@ -1144,9 +1808,11 @@ if (isset($_POST['transfer'])) {
                                     Officer
                                 </label>
 
-                                <input type="text"
+                                <input
+                                    type="text"
                                     name="officer"
-                                    class="form-control">
+                                    class="form-control"
+                                >
 
                             </div>
 
@@ -1156,8 +1822,10 @@ if (isset($_POST['transfer'])) {
                                     Complaint Details
                                 </label>
 
-                                <textarea name="summary_remarks"
-                                    class="form-control"></textarea>
+                                <textarea
+                                    name="summary_remarks"
+                                    class="form-control"
+                                ></textarea>
 
                             </div>
 
@@ -1167,19 +1835,20 @@ if (isset($_POST['transfer'])) {
 
                     <div class="modal-footer">
 
-                        <button type="button"
+                        <button
+                            type="button"
                             class="btn btn-secondary"
-                            data-bs-dismiss="modal">
-
+                            data-bs-dismiss="modal"
+                        >
                             Close
-
                         </button>
 
-                        <button class="btn btn-primary"
-                            name="submit">
-
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                            name="submit"
+                        >
                             Save Record
-
                         </button>
 
                     </div>
@@ -1203,17 +1872,26 @@ if (isset($_POST['transfer'])) {
 
             <div class="modal-content">
 
-                <form method="POST" id="manageForm">
+                <form
+                    method="POST"
+                    id="manageForm"
+                >
 
-                    <!-- CSRF -->
-
-                    <input type="hidden"
+                    <input
+                        type="hidden"
                         name="csrf_token"
-                        value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
+                        value="<?= htmlspecialchars(
+                            $csrf_token,
+                            ENT_QUOTES,
+                            'UTF-8'
+                        ) ?>"
+                    >
 
-                    <input type="hidden"
+                    <input
+                        type="hidden"
                         name="id"
-                        id="viewId">
+                        id="viewId"
+                    >
 
                     <div class="modal-header py-2">
 
@@ -1225,25 +1903,31 @@ if (isset($_POST['transfer'])) {
 
                         </h5>
 
-                        <button type="button"
+                        <button
+                            type="button"
                             class="btn-close"
-                            data-bs-dismiss="modal">
-                        </button>
+                            data-bs-dismiss="modal"
+                        ></button>
 
                     </div>
 
-                    <ul class="nav nav-tabs px-3 pt-2"
-                        id="manageTabs">
+                    <ul
+                        class="nav nav-tabs px-3 pt-2"
+                        id="manageTabs"
+                    >
 
                         <li class="nav-item">
 
-                            <button class="nav-link active manage-tab-link"
+                            <button
+                                class="nav-link active manage-tab-link"
                                 id="reportTabBtn"
                                 data-bs-toggle="tab"
                                 data-bs-target="#tabReport"
-                                type="button">
+                                type="button"
+                            >
 
                                 <i class="fa fa-file-alt me-1"></i>
+
                                 Report
 
                             </button>
@@ -1252,12 +1936,15 @@ if (isset($_POST['transfer'])) {
 
                         <li class="nav-item">
 
-                            <button class="nav-link manage-tab-link"
+                            <button
+                                class="nav-link manage-tab-link"
                                 data-bs-toggle="tab"
                                 data-bs-target="#tabActions"
-                                type="button">
+                                type="button"
+                            >
 
                                 <i class="fa fa-gears me-1"></i>
+
                                 Manage / Actions
 
                             </button>
@@ -1296,46 +1983,52 @@ if (isset($_POST['transfer'])) {
 
                             <!-- REPORT TAB -->
 
-                            <div class="tab-pane fade show active"
-                                id="tabReport">
+                            <div
+                                class="tab-pane fade show active"
+                                id="tabReport"
+                            >
 
-                                <div id="printArea"
+                                <div
+                                    id="printArea"
                                     class="border rounded p-4"
-                                    style="font-family: 'Times New Roman', Times, serif; background:#fff; max-height: 52vh; overflow-y: auto;">
+                                    style="font-family: 'Times New Roman', Times, serif; background:#fff; max-height: 52vh; overflow-y: auto;"
+                                >
 
-                                    <div class="text-center pb-2 mb-3"
-                                        style="border-bottom: 2px solid #333;">
+                                    <div
+                                        class="text-center pb-2 mb-3"
+                                        style="border-bottom: 2px solid #333;"
+                                    >
 
-                                        <div class="text-uppercase small text-muted"
-                                            style="letter-spacing:1px;">
-
+                                        <div
+                                            class="text-uppercase small text-muted"
+                                            style="letter-spacing:1px;"
+                                        >
                                             Republic of the Philippines
-
                                         </div>
 
-                                        <div class="fw-bold"
-                                            style="font-size: 1.1rem;">
-
+                                        <div
+                                            class="fw-bold"
+                                            style="font-size: 1.1rem;"
+                                        >
                                             Barangay San Isidro
-
                                         </div>
 
                                         <div class="small text-muted mb-2">
-
                                             Office of the Barangay Public Safety Officer
-
                                         </div>
 
-                                        <div class="fw-bold text-uppercase"
-                                            style="font-size: 1.25rem; letter-spacing: 1px;">
-
+                                        <div
+                                            class="fw-bold text-uppercase"
+                                            style="font-size: 1.25rem; letter-spacing: 1px;"
+                                        >
                                             Blotter Report
-
                                         </div>
 
                                     </div>
 
-                                    <div class="d-flex justify-content-between small text-muted mb-3">
+                                    <div
+                                        class="d-flex justify-content-between small text-muted mb-3"
+                                    >
 
                                         <span>
 
@@ -1351,9 +2044,10 @@ if (isset($_POST['transfer'])) {
 
                                             Status:
 
-                                            <span class="badge"
-                                                id="viewStatusBadge">
-                                            </span>
+                                            <span
+                                                class="badge"
+                                                id="viewStatusBadge"
+                                            ></span>
 
                                         </span>
 
@@ -1367,9 +2061,10 @@ if (isset($_POST['transfer'])) {
                                                 Date Filed
                                             </div>
 
-                                            <div class="fw-semibold"
-                                                id="viewDate">
-                                            </div>
+                                            <div
+                                                class="fw-semibold"
+                                                id="viewDate"
+                                            ></div>
 
                                         </div>
 
@@ -1379,9 +2074,10 @@ if (isset($_POST['transfer'])) {
                                                 Assigned Officer
                                             </div>
 
-                                            <div class="fw-semibold"
-                                                id="viewOfficerDisplay">
-                                            </div>
+                                            <div
+                                                class="fw-semibold"
+                                                id="viewOfficerDisplay"
+                                            ></div>
 
                                         </div>
 
@@ -1391,9 +2087,10 @@ if (isset($_POST['transfer'])) {
                                                 Complainant/s
                                             </div>
 
-                                            <div class="fw-semibold"
-                                                id="viewComplainants">
-                                            </div>
+                                            <div
+                                                class="fw-semibold"
+                                                id="viewComplainants"
+                                            ></div>
 
                                         </div>
 
@@ -1403,9 +2100,10 @@ if (isset($_POST['transfer'])) {
                                                 Nature of Complaint
                                             </div>
 
-                                            <div class="fw-semibold"
-                                                id="viewComplaint">
-                                            </div>
+                                            <div
+                                                class="fw-semibold"
+                                                id="viewComplaint"
+                                            ></div>
 
                                         </div>
 
@@ -1413,51 +2111,50 @@ if (isset($_POST['transfer'])) {
 
                                     <div class="mb-3">
 
-                                        <div class="text-muted small text-uppercase mb-1"
-                                            style="letter-spacing:.5px; border-bottom:1px solid #ddd; padding-bottom:2px;">
-
+                                        <div
+                                            class="text-muted small text-uppercase mb-1"
+                                            style="letter-spacing:.5px; border-bottom:1px solid #ddd; padding-bottom:2px;"
+                                        >
                                             Summary of Complaint
-
                                         </div>
 
-                                        <div id="viewSummaryDisplay"
+                                        <div
+                                            id="viewSummaryDisplay"
                                             class="p-2 rounded"
-                                            style="background:#f8f9fa; white-space: pre-wrap; min-height: 60px;">
-                                        </div>
+                                            style="background:#f8f9fa; white-space: pre-wrap; min-height: 60px;"
+                                        ></div>
 
                                     </div>
 
                                     <div class="mb-3">
 
-                                        <div class="text-muted small text-uppercase mb-1"
-                                            style="letter-spacing:.5px; border-bottom:1px solid #ddd; padding-bottom:2px;">
-
+                                        <div
+                                            class="text-muted small text-uppercase mb-1"
+                                            style="letter-spacing:.5px; border-bottom:1px solid #ddd; padding-bottom:2px;"
+                                        >
                                             Resolution / Remarks
-
                                         </div>
 
-                                        <div id="viewResponseDisplay"
+                                        <div
+                                            id="viewResponseDisplay"
                                             class="p-2 rounded"
-                                            style="background:#f8f9fa; white-space: pre-wrap; min-height: 40px;">
-
+                                            style="background:#f8f9fa; white-space: pre-wrap; min-height: 40px;"
+                                        >
                                             —
-
                                         </div>
 
                                     </div>
 
                                     <div class="text-end mt-4">
 
-                                        <div style="display:inline-block; border-top:1px solid #333; padding-top:4px; min-width:220px; text-align:center;">
-
+                                        <div
+                                            style="display:inline-block; border-top:1px solid #333; padding-top:4px; min-width:220px; text-align:center;"
+                                        >
                                             Prepared by
-
                                         </div>
 
                                         <div class="small text-muted">
-
                                             Barangay Public Safety Officer
-
                                         </div>
 
                                     </div>
@@ -1469,11 +2166,15 @@ if (isset($_POST['transfer'])) {
 
                             <!-- ACTIONS TAB -->
 
-                            <div class="tab-pane fade"
-                                id="tabActions">
+                            <div
+                                class="tab-pane fade"
+                                id="tabActions"
+                            >
 
-                                <div class="alert alert-secondary d-none py-2"
-                                    id="lockedNotice">
+                                <div
+                                    class="alert alert-secondary d-none py-2"
+                                    id="lockedNotice"
+                                >
 
                                     <i class="fa fa-lock me-2"></i>
 
@@ -1493,10 +2194,12 @@ if (isset($_POST['transfer'])) {
                                             Assign / Update Officer
                                         </label>
 
-                                        <input type="text"
+                                        <input
+                                            type="text"
                                             name="officer"
                                             id="editOfficer"
-                                            class="form-control">
+                                            class="form-control"
+                                        >
 
                                     </div>
 
@@ -1514,11 +2217,13 @@ if (isset($_POST['transfer'])) {
 
                                     </label>
 
-                                    <textarea name="response"
+                                    <textarea
+                                        name="response"
                                         id="editResponse"
                                         class="form-control"
                                         rows="3"
-                                        placeholder="Enter resolution notes or rejection reason..."></textarea>
+                                        placeholder="Enter resolution notes or rejection reason..."
+                                    ></textarea>
 
                                 </div>
 
@@ -1536,24 +2241,27 @@ if (isset($_POST['transfer'])) {
 
                                     <div class="input-group">
 
-                                        <input type="email"
+                                        <input
+                                            type="email"
                                             id="emailRecipient"
                                             class="form-control"
-                                            placeholder="recipient@email.com">
+                                            placeholder="recipient@email.com"
+                                        >
 
-                                        <button type="button"
+                                        <button
+                                            type="button"
                                             class="btn btn-outline-primary"
-                                            onclick="sendBlotterEmail()">
-
+                                            onclick="sendBlotterEmail()"
+                                        >
                                             Send
-
                                         </button>
 
                                     </div>
 
-                                    <div id="emailStatusMsg"
-                                        class="small mt-1">
-                                    </div>
+                                    <div
+                                        id="emailStatusMsg"
+                                        class="small mt-1"
+                                    ></div>
 
                                 </div>
 
@@ -1565,9 +2273,11 @@ if (isset($_POST['transfer'])) {
 
                     <div class="modal-footer py-2 flex-wrap">
 
-                        <button type="button"
+                        <button
+                            type="button"
                             class="btn btn-outline-dark btn-sm"
-                            onclick="printLetter()">
+                            onclick="printLetter()"
+                        >
 
                             <i class="fa fa-print me-1"></i>
 
@@ -1575,10 +2285,12 @@ if (isset($_POST['transfer'])) {
 
                         </button>
 
-                        <button type="submit"
+                        <button
+                            type="submit"
                             class="btn btn-success btn-sm"
                             name="resolve"
-                            id="btnResolve">
+                            id="btnResolve"
+                        >
 
                             <i class="fa fa-check me-1"></i>
 
@@ -1586,11 +2298,13 @@ if (isset($_POST['transfer'])) {
 
                         </button>
 
-                        <button type="submit"
+                        <button
+                            type="submit"
                             class="btn btn-danger btn-sm"
                             name="reject"
                             id="btnReject"
-                            onclick="return validateReject()">
+                            onclick="return validateReject()"
+                        >
 
                             <i class="fa fa-times me-1"></i>
 
@@ -1598,10 +2312,12 @@ if (isset($_POST['transfer'])) {
 
                         </button>
 
-                        <button type="submit"
+                        <button
+                            type="submit"
                             class="btn btn-warning btn-sm"
                             name="transfer"
-                            id="btnTransfer">
+                            id="btnTransfer"
+                        >
 
                             <i class="fa fa-share me-1"></i>
 
@@ -1609,12 +2325,12 @@ if (isset($_POST['transfer'])) {
 
                         </button>
 
-                        <button type="button"
+                        <button
+                            type="button"
                             class="btn btn-secondary btn-sm"
-                            data-bs-dismiss="modal">
-
+                            data-bs-dismiss="modal"
+                        >
                             Close
-
                         </button>
 
                     </div>
@@ -1636,7 +2352,13 @@ if (isset($_POST['transfer'])) {
            CSRF TOKEN FOR JAVASCRIPT REQUESTS
            ===================================================== */
 
-        const CSRF_TOKEN = <?= json_encode($csrf_token) ?>;
+        const CSRF_TOKEN = <?= json_encode(
+            $csrf_token,
+            JSON_HEX_TAG |
+            JSON_HEX_AMP |
+            JSON_HEX_APOS |
+            JSON_HEX_QUOT
+        ) ?>;
 
 
         const LOCKED_STATUSES = [
@@ -1664,17 +2386,23 @@ if (isset($_POST['transfer'])) {
 
             currentRecord = data;
 
-            const status = (data.status || 'Pending').trim();
+            const status =
+                (data.status || 'Pending').trim();
 
-            const isLocked = LOCKED_STATUSES.includes(status);
+            const isLocked =
+                LOCKED_STATUSES.includes(status);
 
-            document.getElementById("viewId").value = data.id;
+            document.getElementById("viewId").value =
+                data.id;
 
-            document.getElementById("viewIdDisplay").innerText = data.id;
+            document.getElementById("viewIdDisplay").innerText =
+                data.id;
 
-            document.getElementById("modalCaseRef").innerText = "BR-" + data.id;
+            document.getElementById("modalCaseRef").innerText =
+                "BR-" + data.id;
 
-            document.getElementById("viewDate").innerText = data.date || '';
+            document.getElementById("viewDate").innerText =
+                data.date || '';
 
             document.getElementById("viewComplainants").innerText =
                 data.complainants || '';
@@ -1691,13 +2419,18 @@ if (isset($_POST['transfer'])) {
             document.getElementById("viewResponseDisplay").innerText =
                 data.response || '—';
 
-            const badge = document.getElementById("viewStatusBadge");
+            const badge =
+                document.getElementById("viewStatusBadge");
 
-            badge.innerText = status.toUpperCase();
+            badge.innerText =
+                status.toUpperCase();
 
             badge.className =
                 "badge " +
-                (STATUS_BADGES[status.toLowerCase()] || "bg-secondary");
+                (
+                    STATUS_BADGES[status.toLowerCase()] ||
+                    "bg-secondary"
+                );
 
             document.getElementById("editOfficer").value =
                 data.officer || '';
@@ -1705,9 +2438,11 @@ if (isset($_POST['transfer'])) {
             document.getElementById("editResponse").value =
                 data.response || '';
 
-            document.getElementById("emailRecipient").value = '';
+            document.getElementById("emailRecipient").value =
+                '';
 
-            document.getElementById("emailStatusMsg").innerText = '';
+            document.getElementById("emailStatusMsg").innerText =
+                '';
 
             const lockedNotice =
                 document.getElementById("lockedNotice");
@@ -1724,17 +2459,21 @@ if (isset($_POST['transfer'])) {
             const btnTransfer =
                 document.getElementById("btnTransfer");
 
-            btnResolve.disabled = isLocked;
+            btnResolve.disabled =
+                isLocked;
 
-            btnReject.disabled = isLocked;
+            btnReject.disabled =
+                isLocked;
 
-            btnTransfer.disabled = isLocked;
+            btnTransfer.disabled =
+                isLocked;
 
             if (isLocked) {
 
                 lockedNotice.classList.remove("d-none");
 
-                lockedStatusText.innerText = status;
+                lockedStatusText.innerText =
+                    status;
 
             } else {
 
@@ -1746,7 +2485,8 @@ if (isset($_POST['transfer'])) {
                 document.getElementById("reportTabBtn")
             ).show();
 
-            document.getElementById("printArea").scrollTop = 0;
+            document.getElementById("printArea").scrollTop =
+                0;
 
             new bootstrap.Modal(
                 document.getElementById("manageModal")
@@ -1758,7 +2498,10 @@ if (isset($_POST['transfer'])) {
         function validateReject() {
 
             const val =
-                document.getElementById("editResponse").value.trim();
+                document
+                    .getElementById("editResponse")
+                    .value
+                    .trim();
 
             if (val === '') {
 
@@ -1766,7 +2509,9 @@ if (isset($_POST['transfer'])) {
                     'Please provide a reason for rejection before submitting.'
                 );
 
-                document.getElementById("editResponse").focus();
+                document
+                    .getElementById("editResponse")
+                    .focus();
 
                 return false;
             }
@@ -1778,9 +2523,11 @@ if (isset($_POST['transfer'])) {
 
         function escapeHtml(str) {
 
-            const div = document.createElement('div');
+            const div =
+                document.createElement('div');
 
-            div.innerText = str || '';
+            div.innerText =
+                str || '';
 
             return div.innerHTML;
 
@@ -1789,7 +2536,9 @@ if (isset($_POST['transfer'])) {
 
         function printLetter() {
 
-            if (!currentRecord) return;
+            if (!currentRecord) {
+                return;
+            }
 
             const status =
                 (currentRecord.status || 'Pending').trim();
@@ -1797,6 +2546,11 @@ if (isset($_POST['transfer'])) {
             const badgeClass =
                 STATUS_BADGES[status.toLowerCase()] ||
                 'bg-secondary';
+
+            const safeStatus =
+                escapeHtml(
+                    status.toUpperCase()
+                );
 
             const generatedOn =
                 new Date().toLocaleString(
@@ -1818,7 +2572,9 @@ if (isset($_POST['transfer'])) {
                 <meta charset="utf-8">
 
                 <title>
-                    Print Preview - BR-${currentRecord.id}
+                    Print Preview - BR-${escapeHtml(
+                        String(currentRecord.id)
+                    )}
                 </title>
 
                 <style>
@@ -1887,17 +2643,17 @@ if (isset($_POST['transfer'])) {
                     }
 
                     .page-wrap {
-                        padding: 32px 16px;
+                        padding:32px 16px;
                         display:flex;
                         justify-content:center;
                     }
 
                     .page {
                         background:#fff;
-                        width: 8.5in;
-                        min-height: 11in;
-                        padding: 0.9in 0.85in;
-                        box-shadow: 0 4px 14px rgba(0,0,0,.18);
+                        width:8.5in;
+                        min-height:11in;
+                        padding:0.9in 0.85in;
+                        box-shadow:0 4px 14px rgba(0,0,0,.18);
                     }
 
                     .header {
@@ -2045,7 +2801,7 @@ if (isset($_POST['transfer'])) {
                         text-align:center;
                         border-top:1px solid #eee;
                         padding-top:10px;
-                        font-family: Arial, Helvetica, sans-serif;
+                        font-family:Arial, Helvetica, sans-serif;
                     }
 
                     @media print {
@@ -2083,7 +2839,9 @@ if (isset($_POST['transfer'])) {
 
                             Print Preview —
                             Blotter Report
-                            BR-${currentRecord.id}
+                            BR-${escapeHtml(
+                                String(currentRecord.id)
+                            )}
 
                         </span>
 
@@ -2091,18 +2849,16 @@ if (isset($_POST['transfer'])) {
 
                             <button
                                 class="btn-close"
-                                onclick="window.close()">
-
+                                onclick="window.close()"
+                            >
                                 Close
-
                             </button>
 
                             <button
                                 class="btn-print"
-                                onclick="window.print()">
-
+                                onclick="window.print()"
+                            >
                                 🖨 Print
-
                             </button>
 
                         </span>
@@ -2136,11 +2892,15 @@ if (isset($_POST['transfer'])) {
                             <div class="meta">
 
                                 <span>
-                                    Case Ref: BR-${currentRecord.id}
+                                    Case Ref:
+                                    BR-${escapeHtml(
+                                        String(currentRecord.id)
+                                    )}
                                 </span>
 
                                 <span>
-                                    Generated: ${generatedOn}
+                                    Generated:
+                                    ${escapeHtml(generatedOn)}
                                 </span>
 
                             </div>
@@ -2154,7 +2914,9 @@ if (isset($_POST['transfer'])) {
                                     </td>
 
                                     <td>
-                                        ${escapeHtml(currentRecord.date)}
+                                        ${escapeHtml(
+                                            currentRecord.date
+                                        )}
                                     </td>
 
                                 </tr>
@@ -2166,7 +2928,9 @@ if (isset($_POST['transfer'])) {
                                     </td>
 
                                     <td>
-                                        ${escapeHtml(currentRecord.complainants)}
+                                        ${escapeHtml(
+                                            currentRecord.complainants
+                                        )}
                                     </td>
 
                                 </tr>
@@ -2178,7 +2942,9 @@ if (isset($_POST['transfer'])) {
                                     </td>
 
                                     <td>
-                                        ${escapeHtml(currentRecord.complaint)}
+                                        ${escapeHtml(
+                                            currentRecord.complaint
+                                        )}
                                     </td>
 
                                 </tr>
@@ -2206,9 +2972,11 @@ if (isset($_POST['transfer'])) {
 
                                     <td>
 
-                                        <span class="badge ${badgeClass}">
+                                        <span class="badge ${escapeHtml(
+                                            badgeClass
+                                        )}">
 
-                                            ${status.toUpperCase()}
+                                            ${safeStatus}
 
                                         </span>
 
@@ -2301,7 +3069,6 @@ if (isset($_POST['transfer'])) {
                 </body>
 
                 </html>
-
             `;
 
             const printWin =
@@ -2337,14 +3104,17 @@ if (isset($_POST['transfer'])) {
                 document.getElementById("viewId").value;
 
             const email =
-                document.getElementById("emailRecipient").value.trim();
+                document
+                    .getElementById("emailRecipient")
+                    .value
+                    .trim();
 
             const statusEl =
                 document.getElementById("emailStatusMsg");
 
             if (
                 !email ||
-                !/^[^\s@]+\.[^\s@]+$/.test(email)
+                !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
             ) {
 
                 statusEl.className =
@@ -2362,27 +3132,27 @@ if (isset($_POST['transfer'])) {
             statusEl.innerText =
                 "Sending...";
 
+            fetch(
+                "send_blotter_email.php",
+                {
+                    method: "POST",
 
-            fetch("send_blotter_email.php", {
+                    headers: {
+                        "Content-Type":
+                            "application/x-www-form-urlencoded"
+                    },
 
-                method: "POST",
+                    body:
+                        "csrf_token=" +
+                        encodeURIComponent(CSRF_TOKEN) +
 
-                headers: {
-                    "Content-Type":
-                        "application/x-www-form-urlencoded"
-                },
+                        "&id=" +
+                        encodeURIComponent(id) +
 
-                body:
-                    "csrf_token=" +
-                    encodeURIComponent(CSRF_TOKEN) +
-
-                    "&id=" +
-                    encodeURIComponent(id) +
-
-                    "&recipient_email=" +
-                    encodeURIComponent(email)
-
-            })
+                        "&recipient_email=" +
+                        encodeURIComponent(email)
+                }
+            )
 
             .then(res => res.json())
 
@@ -2427,14 +3197,16 @@ if (isset($_POST['transfer'])) {
 
         function searchTable() {
 
-            let filter =
+            const filter =
                 document
                     .getElementById("searchInput")
                     .value
                     .toLowerCase();
 
             document
-                .querySelectorAll("#blotterTable tbody tr")
+                .querySelectorAll(
+                    "#blotterTable tbody tr"
+                )
                 .forEach(row => {
 
                     row.style.display =

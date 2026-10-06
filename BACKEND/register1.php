@@ -1,529 +1,618 @@
 <?php
 
 /* =========================================================
-   START SESSION / OUTPUT BUFFER
+   SESSION / OUTPUT
 ========================================================= */
 
 ob_start();
-require_once __DIR__ . '/security_helpers.php';
-bms_start_secure_session();
-bms_send_security_headers();
+session_start();
 
-include "db_connect.php";
+require_once __DIR__ . "/db_connect.php";
 
-/*
- * Clear accidental output from db_connect.php
- * before sending JSON.
- */
 ob_clean();
 
 header('Content-Type: application/json; charset=UTF-8');
 
 
 /* =========================================================
-   1. CSRF TOKEN CHECK
+   HELPER FUNCTIONS
+========================================================= */
+
+function jsonResponse($success, $message, $httpCode = 200)
+{
+    http_response_code($httpCode);
+
+    echo json_encode([
+        "success" => $success,
+        "message" => $message
+    ]);
+
+    exit();
+}
+
+
+/*
+ * Remove all temporary registration information
+ * while keeping the normal session and CSRF token.
+ */
+function cleanupRegistrationSession()
+{
+    unset(
+        $_SESSION['temp_user_data'],
+        $_SESSION['temp_file_name'],
+        $_SESSION['temp_file_path'],
+        $_SESSION['otp'],
+        $_SESSION['registration_security_verified'],
+        $_SESSION['registration_otp_expires'],
+        $_SESSION['registration_otp_attempts'],
+        $_SESSION['registration_otp_max_attempts']
+    );
+}
+
+
+/*
+ * Delete the quarantine file belonging to the
+ * current registration.
+ */
+function cleanupQuarantineFile()
+{
+    $filePath = $_SESSION['temp_file_path'] ?? '';
+
+    if (
+        is_string($filePath) &&
+        $filePath !== '' &&
+        is_file($filePath)
+    ) {
+        @unlink($filePath);
+    }
+}
+
+
+/* =========================================================
+   REQUEST METHOD
+========================================================= */
+
+if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+    jsonResponse(
+        false,
+        "Invalid request method.",
+        405
+    );
+}
+
+
+/* =========================================================
+   CSRF
 ========================================================= */
 
 $csrfToken = $_POST['csrf_token'] ?? '';
 
 if (
     empty($csrfToken) ||
-    !is_string($csrfToken) ||
     empty($_SESSION['csrf_token']) ||
     !hash_equals(
         $_SESSION['csrf_token'],
         $csrfToken
     )
 ) {
-
-    echo json_encode([
-        "success" => false,
-        "message" => "Invalid CSRF token."
-    ]);
-
-    exit();
+    jsonResponse(
+        false,
+        "Invalid CSRF token.",
+        403
+    );
 }
 
 
 /* =========================================================
-   2. REQUEST METHOD
-========================================================= */
-
-if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-
-    http_response_code(405);
-
-    echo json_encode([
-        "success" => false,
-        "message" => "Invalid request method."
-    ]);
-
-    exit();
-}
-
-
-/* =========================================================
-   3. HONEYPOT CHECK
+   HONEYPOT
 ========================================================= */
 
 if (!empty($_POST['bms_reg_v_field'])) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
 
-    echo json_encode([
-        "success" => false,
-        "message" => "Bot activity detected."
-    ]);
-
-    exit();
+    jsonResponse(
+        false,
+        "Bot activity detected.",
+        403
+    );
 }
 
 
 /* =========================================================
-   4. REGISTRATION SECURITY SESSION CHECK
+   REGISTRATION SECURITY CHECK
 ========================================================= */
 
 if (
     empty($_SESSION['registration_security_verified']) ||
     $_SESSION['registration_security_verified'] !== true
 ) {
-
-    echo json_encode([
-        "success" => false,
-        "message" =>
-            "Security verification expired. Please register again."
-    ]);
-
-    exit();
-}
-
-if (!bms_rate_limit('registration-otp-verify', 10, 3600)) {
-    http_response_code(429);
-    echo json_encode([
-        "success" => false,
-        "message" => "Too many verification attempts. Please try again later."
-    ]);
-    exit();
+    jsonResponse(
+        false,
+        "Registration session is invalid. Please start again.",
+        403
+    );
 }
 
 
 /* =========================================================
-   5. OTP VALIDATION
+   TEMPORARY REGISTRATION DATA
 ========================================================= */
 
-$user_otp = trim(
-    (string)($_POST['otp_code'] ?? '')
-);
-
-
-if (
-    $user_otp === '' ||
-    !isset($_SESSION['otp']) ||
-    !isset($_SESSION['otp_created_at']) ||
-    time() - (int)$_SESSION['otp_created_at'] > 600
-) {
-
-    echo json_encode([
-        "success" => false,
-        "message" =>
-            "Missing OTP or session expired."
-    ]);
-
-    exit();
-}
-
-
-/*
- * Use hash_equals() rather than loose comparison.
- *
- * OTP is converted to string to ensure both values
- * are compared consistently.
- */
-$sessionOtp = (string)$_SESSION['otp'];
-
-if (!hash_equals($sessionOtp, $user_otp)) {
-    $_SESSION['otp_attempts'] = (int)($_SESSION['otp_attempts'] ?? 0) + 1;
-    if ($_SESSION['otp_attempts'] >= 5) {
-        $temporaryFile = $_SESSION['temp_file_path'] ?? '';
-        if (is_string($temporaryFile) && is_file($temporaryFile)) {
-            unlink($temporaryFile);
-        }
-        unset(
-            $_SESSION['temp_user_data'],
-            $_SESSION['temp_file_name'],
-            $_SESSION['temp_file_path'],
-            $_SESSION['otp'],
-            $_SESSION['otp_created_at'],
-            $_SESSION['otp_attempts'],
-            $_SESSION['registration_security_verified']
-        );
-        http_response_code(429);
-        echo json_encode([
-            "success" => false,
-            "message" => "Too many incorrect codes. Please register again."
-        ]);
-        exit();
-    }
-
-    echo json_encode([
-        "success" => false,
-        "message" =>
-            "Incorrect OTP. Please check your email."
-    ]);
-
-    exit();
-}
-
-
-/* =========================================================
-   6. RETRIEVE TEMPORARY REGISTRATION DATA
-========================================================= */
-
-$userData =
+$tempData =
     $_SESSION['temp_user_data'] ?? null;
 
-$new_file_name =
-    $_SESSION['temp_file_name'] ?? null;
-
 
 if (
-    !is_array($userData) ||
-    empty($userData)
+    !is_array($tempData) ||
+    empty($_SESSION['temp_file_name']) ||
+    empty($_SESSION['temp_file_path'])
 ) {
+    cleanupRegistrationSession();
 
-    echo json_encode([
-        "success" => false,
-        "message" =>
-            "Registration data not found."
-    ]);
-
-    exit();
+    jsonResponse(
+        false,
+        "Registration session has expired. Please register again.",
+        403
+    );
 }
 
 
 /* =========================================================
-   7. DATA PREPARATION
+   OTP EXPIRATION
 ========================================================= */
 
-$account_type = trim(
-    (string)($userData['account_type'] ?? '')
-);
+$otpExpires =
+    (int)(
+        $_SESSION['registration_otp_expires'] ?? 0
+    );
 
-$department = strtoupper(
-    trim(
-        (string)($userData['department'] ?? '')
+
+if (
+    $otpExpires <= 0 ||
+    time() > $otpExpires
+) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "OTP has expired. Please request a new OTP.",
+        410
+    );
+}
+
+
+/* =========================================================
+   OTP ATTEMPTS
+========================================================= */
+
+$currentAttempts =
+    (int)(
+        $_SESSION['registration_otp_attempts'] ?? 0
+    );
+
+
+$maxAttempts =
+    (int)(
+        $_SESSION['registration_otp_max_attempts'] ?? 5
+    );
+
+
+if ($maxAttempts <= 0) {
+    $maxAttempts = 5;
+}
+
+
+if ($currentAttempts >= $maxAttempts) {
+
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Too many incorrect OTP attempts. Please start registration again.",
+        429
+    );
+}
+
+
+/* =========================================================
+   OTP INPUT
+========================================================= */
+
+$submittedOtp = trim(
+    (string)(
+        $_POST['otp_code'] ?? ''
     )
 );
 
-$satellite_id = (int)(
-    $userData['satellite_id'] ?? 0
-);
 
-$name = trim(
-    (string)($userData['name'] ?? '')
-);
-
-$username = trim(
-    (string)($userData['username'] ?? '')
-);
-
-$email = trim(
-    (string)($userData['email'] ?? '')
-);
-
-$contact_number = trim(
-    (string)($userData['contact_number'] ?? '')
-);
-
-
-/*
- * IMPORTANT:
- * Do NOT trim passwords.
- */
-$password =
-    (string)($userData['password'] ?? '');
-
-$id_number = trim(
-    (string)($userData['id_number'] ?? '')
-);
-
-
-/* =========================================================
-   8. BASIC DATA VALIDATION
-========================================================= */
-
-if (
-    $account_type !== 'resident' &&
-    $account_type !== 'official'
-) {
-
-    echo json_encode([
-        "success" => false,
-        "message" => "Invalid account type."
-    ]);
-
-    exit();
-}
-
-
-if ($name === '' || $username === '' || $email === '') {
-
-    echo json_encode([
-        "success" => false,
-        "message" => "Required registration information is missing."
-    ]);
-
-    exit();
-}
-
-
-if (!bms_password_is_strong($password)) {
-
-    echo json_encode([
-        "success" => false,
-        "message" => "Password does not meet the security requirements."
-    ]);
-
-    exit();
-}
-
-
-if ($satellite_id <= 0) {
-
-    echo json_encode([
-        "success" => false,
-        "message" => "Invalid barangay satellite."
-    ]);
-
-    exit();
-}
-
-
-/* =========================================================
-   9. TEMPORARY FILE VALIDATION
-========================================================= */
-
-if (
-    empty($new_file_name) ||
-    !is_string($new_file_name)
-) {
-
-    echo json_encode([
-        "success" => false,
-        "message" => "Registration proof file is missing."
-    ]);
-
-    exit();
-}
-
-
-/*
- * Only allow a safe filename.
- *
- * This prevents values containing:
- * ../
- * directory separators
- * null bytes
- * or other unexpected path data.
- */
 if (
     !preg_match(
-        '/^[A-Za-z0-9._-]+$/',
-        $new_file_name
+        '/^[0-9]{6}$/',
+        $submittedOtp
     )
 ) {
 
-    echo json_encode([
-        "success" => false,
-        "message" => "Invalid registration file."
-    ]);
+    $_SESSION['registration_otp_attempts'] =
+        $currentAttempts + 1;
 
-    exit();
-}
+    if (
+        $_SESSION['registration_otp_attempts']
+        >= $maxAttempts
+    ) {
+        cleanupQuarantineFile();
+        cleanupRegistrationSession();
 
+        jsonResponse(
+            false,
+            "Too many incorrect OTP attempts. Please start registration again.",
+            429
+        );
+    }
 
-/* =========================================================
-   10. QUARANTINE FILE PATH
-========================================================= */
-
-/*
- * The file was already scanned by ClamAV in send_otp.php.
- *
- * It remains in quarantine until the user successfully
- * verifies the OTP.
- */
-$quarantine_directory = realpath(
-    __DIR__ . DIRECTORY_SEPARATOR . "../UPLOADS/quarantine"
-);
-
-
-if (
-    $quarantine_directory === false ||
-    !is_dir($quarantine_directory)
-) {
-
-    echo json_encode([
-        "success" => false,
-        "message" => "Upload quarantine directory not found."
-    ]);
-
-    exit();
-}
-
-
-/*
- * Build the quarantine file path using the resolved directory.
- */
-$quarantine_file_path =
-    $quarantine_directory .
-    DIRECTORY_SEPARATOR .
-    $new_file_name;
-
-
-/* =========================================================
-   11. VERIFY QUARANTINE FILE EXISTS
-========================================================= */
-
-if (!is_file($quarantine_file_path)) {
-
-    echo json_encode([
-        "success" => false,
-        "message" => "Registration proof file was not found."
-    ]);
-
-    exit();
-}
-
-
-/* =========================================================
-   12. VERIFY FILE IS INSIDE QUARANTINE DIRECTORY
-========================================================= */
-
-$real_file_path = realpath($quarantine_file_path);
-
-if ($real_file_path === false) {
-
-    echo json_encode([
-        "success" => false,
-        "message" => "Invalid registration file."
-    ]);
-
-    exit();
-}
-
-
-$quarantine_directory_normalized =
-    rtrim(
-        str_replace(
-            '\\',
-            '/',
-            $quarantine_directory
-        ),
-        '/'
+    jsonResponse(
+        false,
+        "Please enter the 6-digit OTP.",
+        422
     );
+}
 
 
-$real_file_path_normalized =
-    str_replace(
-        '\\',
-        '/',
-        $real_file_path
+/* =========================================================
+   STORED OTP
+========================================================= */
+
+$storedOtp =
+    (string)(
+        $_SESSION['otp'] ?? ''
     );
 
 
 if (
-    strpos(
-        $real_file_path_normalized,
-        $quarantine_directory_normalized . '/'
-    ) !== 0
+    $storedOtp === '' ||
+    !hash_equals(
+        $storedOtp,
+        $submittedOtp
+    )
 ) {
 
-    echo json_encode([
-        "success" => false,
-        "message" => "Invalid registration file location."
-    ]);
+    $_SESSION['registration_otp_attempts'] =
+        $currentAttempts + 1;
 
-    exit();
+    $remaining =
+        $maxAttempts -
+        $_SESSION['registration_otp_attempts'];
+
+
+    if ($remaining <= 0) {
+
+        cleanupQuarantineFile();
+        cleanupRegistrationSession();
+
+        jsonResponse(
+            false,
+            "Too many incorrect OTP attempts. Please start registration again.",
+            429
+        );
+    }
+
+
+    jsonResponse(
+        false,
+        "Incorrect OTP. {$remaining} attempt(s) remaining.",
+        422
+    );
+}
+
+
+/* =========================================================
+   VALIDATE TEMP DATA
+========================================================= */
+
+$account_type =
+    strtolower(
+        trim(
+            (string)(
+                $tempData['account_type'] ?? ''
+            )
+        )
+    );
+
+
+$department =
+    strtoupper(
+        trim(
+            (string)(
+                $tempData['department'] ?? ''
+            )
+        )
+    );
+
+
+$satellite_id =
+    filter_var(
+        $tempData['satellite_id'] ?? null,
+        FILTER_VALIDATE_INT
+    );
+
+
+$name =
+    trim(
+        (string)(
+            $tempData['name'] ?? ''
+        )
+    );
+
+
+$username =
+    trim(
+        (string)(
+            $tempData['username'] ?? ''
+        )
+    );
+
+
+$email =
+    trim(
+        (string)(
+            $tempData['email'] ?? ''
+        )
+    );
+
+
+$contact_number =
+    trim(
+        (string)(
+            $tempData['contact_number'] ?? ''
+        )
+    );
+
+
+$passwordHash =
+    (string)(
+        $tempData['password_hash'] ?? ''
+    );
+
+
+$id_number =
+    trim(
+        (string)(
+            $tempData['id_number'] ?? ''
+        )
+    );
+
+
+/* =========================================================
+   ACCOUNT TYPE
+========================================================= */
+
+if (
+    !in_array(
+        $account_type,
+        ['resident', 'official'],
+        true
+    )
+) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Invalid account type.",
+        422
+    );
+}
+
+
+/* =========================================================
+   DEPARTMENT
+========================================================= */
+
+$allowedDepartments = [
+    'ADMIN',
+    'BPSO',
+    'CLEARANCE',
+    'LUPON'
+];
+
+
+if ($account_type === 'official') {
+
+    if (
+        !in_array(
+            $department,
+            $allowedDepartments,
+            true
+        )
+    ) {
+        cleanupQuarantineFile();
+        cleanupRegistrationSession();
+
+        jsonResponse(
+            false,
+            "Invalid department.",
+            422
+        );
+    }
+
+} else {
+
+    $department = '';
+}
+
+
+/* =========================================================
+   SATELLITE
+========================================================= */
+
+if (
+    $satellite_id === false ||
+    $satellite_id <= 0
+) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Invalid barangay satellite.",
+        422
+    );
+}
+
+
+/* =========================================================
+   NAME
+========================================================= */
+
+if (
+    $name === '' ||
+    strlen($name) > 150
+) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Invalid name.",
+        422
+    );
+}
+
+
+/* =========================================================
+   USERNAME
+========================================================= */
+
+if (
+    !preg_match(
+        '/^[A-Za-z0-9_.-]{4,50}$/',
+        $username
+    )
+) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Invalid username.",
+        422
+    );
+}
+
+
+/* =========================================================
+   EMAIL
+========================================================= */
+
+if (
+    !filter_var(
+        $email,
+        FILTER_VALIDATE_EMAIL
+    ) ||
+    strlen($email) > 254
+) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Invalid email address.",
+        422
+    );
+}
+
+
+/* =========================================================
+   CONTACT
+========================================================= */
+
+if (
+    !preg_match(
+        '/^[0-9]{11}$/',
+        $contact_number
+    )
+) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Invalid contact number.",
+        422
+    );
+}
+
+
+/* =========================================================
+   PASSWORD HASH
+========================================================= */
+
+if (
+    $passwordHash === '' ||
+    strlen($passwordHash) < 20
+) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Invalid password security data.",
+        422
+    );
 }
 
 
 /*
- * IMPORTANT:
- * Do NOT run ClamAV again here.
- *
- * send_otp.php already scanned this exact file before
- * placing it in quarantine.
+ * Make sure it is actually a valid password hash.
  */
+$passwordInfo =
+    password_get_info(
+        $passwordHash
+    );
 
 
-/* =========================================================
-   14. ID NUMBER ENCRYPTION
-========================================================= */
+if (
+    empty($passwordInfo['algo'])
+) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
 
-$clean_id = preg_replace(
-    '/[^0-9]/',
-    '',
-    $id_number
-);
-
-
-/*
- * Make sure an ID was actually provided.
- */
-if ($clean_id === '') {
-
-    @unlink($real_file_path);
-
-    echo json_encode([
-        "success" => false,
-        "message" => "Invalid ID number."
-    ]);
-
-    exit();
-}
-
-$encrypted_id = bms_encrypt_profile_id($clean_id);
-
-
-if ($encrypted_id === false || strlen($encrypted_id) > 100) {
-
-    @unlink($real_file_path);
-
-    echo json_encode([
-        "success" => false,
-        "message" => "Unable to secure ID number."
-    ]);
-
-    exit();
+    jsonResponse(
+        false,
+        "Invalid password security data.",
+        422
+    );
 }
 
 
 /* =========================================================
-   15. PASSWORD HASHING
+   ID NUMBER
 ========================================================= */
 
-$hashed_password = password_hash(
-    $password,
-    PASSWORD_DEFAULT
-);
+if (
+    !preg_match(
+        '/^[0-9]{12}$/',
+        $id_number
+    )
+) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
 
-
-if ($hashed_password === false) {
-
-    @unlink($real_file_path);
-
-    echo json_encode([
-        "success" => false,
-        "message" => "Unable to secure password."
-    ]);
-
-    exit();
+    jsonResponse(
+        false,
+        "Invalid ID number.",
+        422
+    );
 }
 
 
 /* =========================================================
-   16. VERIFY SATELLITE
+   VERIFY SATELLITE AGAIN
 ========================================================= */
 
-$satellite_check = $conn->prepare("
+$satelliteCheck = $conn->prepare("
     SELECT satellite_id
     FROM satellites
     WHERE satellite_id = ?
@@ -532,338 +621,109 @@ $satellite_check = $conn->prepare("
 ");
 
 
-if (!$satellite_check) {
+if (!$satelliteCheck) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
 
-    @unlink($real_file_path);
-
-    echo json_encode([
-        "success" => false,
-        "message" => "Unable to verify barangay satellite."
-    ]);
-
-    exit();
+    jsonResponse(
+        false,
+        "Unable to verify barangay satellite.",
+        500
+    );
 }
 
 
-$satellite_check->bind_param(
+$satelliteCheck->bind_param(
     "i",
     $satellite_id
 );
 
-$satellite_check->execute();
 
-$satellite_check->store_result();
+$satelliteCheck->execute();
+
+$satelliteCheck->store_result();
 
 
-if ($satellite_check->num_rows === 0) {
+if ($satelliteCheck->num_rows === 0) {
 
-    $satellite_check->close();
+    $satelliteCheck->close();
 
-    @unlink($real_file_path);
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
 
-    echo json_encode([
-        "success" => false,
-        "message" =>
-            "Invalid barangay satellite selected."
-    ]);
-
-    exit();
+    jsonResponse(
+        false,
+        "The selected barangay satellite is no longer available.",
+        422
+    );
 }
 
 
-$satellite_check->close();
+$satelliteCheck->close();
 
 
 /* =========================================================
-   17. PREPARE FINAL UPLOAD DIRECTORY
+   DUPLICATE ACCOUNT CHECK
 ========================================================= */
 
-$uploads_directory_path =
-    __DIR__ .
-    DIRECTORY_SEPARATOR .
-    "../uploads";
+/*
+ * Check residents and officials again.
+ *
+ * This is important because the database could have
+ * changed between send_otp.php and this final step.
+ */
+
+$duplicateFound = false;
 
 
-if (
-    !is_dir($uploads_directory_path) &&
-    !mkdir($uploads_directory_path, 0755, true)
-) {
+/* ---------- Residents ---------- */
 
-    @unlink($real_file_path);
+$stmt = $conn->prepare("
+    SELECT resident_id
+    FROM residents
+    WHERE username = ?
+    OR email = ?
+    LIMIT 1
+");
 
-    echo json_encode([
-        "success" => false,
-        "message" => "Upload storage is unavailable."
-    ]);
 
-    exit();
+if (!$stmt) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Unable to verify account information.",
+        500
+    );
 }
 
 
-$uploads_directory = realpath(
-    $uploads_directory_path
+$stmt->bind_param(
+    "ss",
+    $username,
+    $email
 );
 
 
-if (
-    $uploads_directory === false ||
-    !is_dir($uploads_directory)
-) {
+$stmt->execute();
 
-    @unlink($real_file_path);
+$stmt->store_result();
 
-    echo json_encode([
-        "success" => false,
-        "message" => "Upload directory not found."
-    ]);
 
-    exit();
+if ($stmt->num_rows > 0) {
+    $duplicateFound = true;
 }
 
 
-/*
- * Final permanent file location.
- */
-$final_file_path =
-    $uploads_directory .
-    DIRECTORY_SEPARATOR .
-    $new_file_name;
+$stmt->close();
 
 
-/* =========================================================
-   18. RESIDENT REGISTRATION
-========================================================= */
+/* ---------- Officials ---------- */
 
-if ($account_type === "resident") {
-
-
-    /* =====================================================
-       CHECK DUPLICATE USERNAME / EMAIL
-    ===================================================== */
-
-    $check_stmt = $conn->prepare("
-        SELECT resident_id
-        FROM residents
-        WHERE username = ?
-        OR email = ?
-        LIMIT 1
-    ");
-
-
-    if (!$check_stmt) {
-
-        @unlink($real_file_path);
-
-        echo json_encode([
-            "success" => false,
-            "message" =>
-                "Unable to verify registration information."
-        ]);
-
-        exit();
-    }
-
-
-    $check_stmt->bind_param(
-        "ss",
-        $username,
-        $email
-    );
-
-    $check_stmt->execute();
-
-    $check_stmt->store_result();
-
-
-    if ($check_stmt->num_rows > 0) {
-
-        $check_stmt->close();
-
-        @unlink($real_file_path);
-
-        echo json_encode([
-            "success" => false,
-            "message" =>
-                "Username or Email already exists."
-        ]);
-
-        exit();
-    }
-
-
-    $check_stmt->close();
-
-
-    /* =====================================================
-       MOVE CLEAN FILE FROM QUARANTINE TO FINAL STORAGE
-    ===================================================== */
-
-    if (!rename($real_file_path, $final_file_path)) {
-
-        echo json_encode([
-            "success" => false,
-            "message" =>
-                "Failed to finalize registration proof file."
-        ]);
-
-        exit();
-    }
-
-
-    /*
-     * From this point onward, the file is in permanent
-     * upload storage.
-     */
-    $real_file_path = $final_file_path;
-
-
-    /* =====================================================
-       INSERT RESIDENT
-    ===================================================== */
+if (!$duplicateFound) {
 
     $stmt = $conn->prepare("
-        INSERT INTO residents
-        (
-            name,
-            username,
-            email,
-            contact_number,
-            password,
-            proof_file,
-            id_number,
-            satellite_id,
-            status
-        )
-        VALUES
-        (
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            'pending'
-        )
-    ");
-
-
-    if (!$stmt) {
-
-        @unlink($real_file_path);
-
-        echo json_encode([
-            "success" => false,
-            "message" =>
-                "Unable to prepare registration."
-        ]);
-
-        exit();
-    }
-
-
-    $stmt->bind_param(
-        "sssssssi",
-        $name,
-        $username,
-        $email,
-        $contact_number,
-        $hashed_password,
-        $new_file_name,
-        $encrypted_id,
-        $satellite_id
-    );
-
-
-    if ($stmt->execute()) {
-
-        $stmt->close();
-
-        /*
-         * Registration completed.
-         *
-         * Destroy the temporary registration session.
-         */
-        session_unset();
-        session_destroy();
-
-
-        echo json_encode([
-            "success" => true
-        ]);
-
-        exit();
-    }
-
-
-    $stmt->close();
-
-
-    /*
-     * Database insertion failed.
-     * Remove finalized file because registration
-     * was not completed.
-     */
-    if (is_file($real_file_path)) {
-        @unlink($real_file_path);
-    }
-
-
-    echo json_encode([
-        "success" => false,
-        "message" =>
-            "Could not complete registration."
-    ]);
-
-    exit();
-}
-
-
-/* =========================================================
-   19. OFFICIAL REGISTRATION
-========================================================= */
-
-if ($account_type === "official") {
-
-
-    /* =====================================================
-       VALIDATE DEPARTMENT
-    ===================================================== */
-
-    $allowed_departments = [
-        'ADMIN',
-        'BPSO',
-        'CLEARANCE',
-        'LUPON'
-    ];
-
-
-    if (
-        !in_array(
-            $department,
-            $allowed_departments,
-            true
-        )
-    ) {
-
-        @unlink($real_file_path);
-
-        echo json_encode([
-            "success" => false,
-            "message" =>
-                "Invalid department selected."
-        ]);
-
-        exit();
-    }
-
-
-    /* =====================================================
-       CHECK DUPLICATE USERNAME / EMAIL
-    ===================================================== */
-
-    $check_stmt = $conn->prepare("
         SELECT official_id
         FROM officials
         WHERE username = ?
@@ -872,191 +732,557 @@ if ($account_type === "official") {
     ");
 
 
-    if (!$check_stmt) {
+    if (!$stmt) {
+        cleanupQuarantineFile();
+        cleanupRegistrationSession();
 
-        @unlink($real_file_path);
-
-        echo json_encode([
-            "success" => false,
-            "message" =>
-                "Unable to verify registration information."
-        ]);
-
-        exit();
+        jsonResponse(
+            false,
+            "Unable to verify account information.",
+            500
+        );
     }
 
 
-    $check_stmt->bind_param(
+    $stmt->bind_param(
         "ss",
         $username,
         $email
     );
 
-    $check_stmt->execute();
 
-    $check_stmt->store_result();
+    $stmt->execute();
+
+    $stmt->store_result();
 
 
-    if ($check_stmt->num_rows > 0) {
-
-        $check_stmt->close();
-
-        @unlink($real_file_path);
-
-        echo json_encode([
-            "success" => false,
-            "message" =>
-                "Username or Email already exists."
-        ]);
-
-        exit();
+    if ($stmt->num_rows > 0) {
+        $duplicateFound = true;
     }
 
 
-    $check_stmt->close();
+    $stmt->close();
+}
 
+
+if ($duplicateFound) {
+
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Username or Email already exists.",
+        409
+    );
+}
+
+
+/* =========================================================
+   VERIFY QUARANTINE FILE
+========================================================= */
+
+$fileName =
+    basename(
+        (string)(
+            $_SESSION['temp_file_name'] ?? ''
+        )
+    );
+
+
+if (
+    $fileName === '' ||
+    !preg_match(
+        '/^[A-Za-z0-9._-]+$/',
+        $fileName
+    )
+) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Invalid uploaded file.",
+        422
+    );
+}
+
+
+/* =========================================================
+   QUARANTINE DIRECTORY
+========================================================= */
+
+$quarantineDirectory =
+    realpath(
+        __DIR__ .
+        DIRECTORY_SEPARATOR .
+        "../UPLOADS/quarantine"
+    );
+
+
+if (
+    $quarantineDirectory === false ||
+    !is_dir($quarantineDirectory)
+) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Upload quarantine directory is unavailable.",
+        500
+    );
+}
+
+
+$quarantinePath =
+    $quarantineDirectory .
+    DIRECTORY_SEPARATOR .
+    $fileName;
+
+
+$realQuarantineFile =
+    realpath(
+        $quarantinePath
+    );
+
+
+if (
+    $realQuarantineFile === false ||
+    !is_file($realQuarantineFile)
+) {
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Uploaded file is missing. Please register again.",
+        422
+    );
+}
+
+
+/*
+ * Prevent path traversal / unexpected file access.
+ */
+$quarantinePrefix =
+    rtrim(
+        $quarantineDirectory,
+        DIRECTORY_SEPARATOR
+    ) .
+    DIRECTORY_SEPARATOR;
+
+
+if (
+    strncmp(
+        $realQuarantineFile,
+        $quarantinePrefix,
+        strlen($quarantinePrefix)
+    ) !== 0
+) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Invalid uploaded file location.",
+        403
+    );
+}
+
+
+/* =========================================================
+   VERIFY FILE SIZE AGAIN
+========================================================= */
+
+$fileSize =
+    filesize(
+        $realQuarantineFile
+    );
+
+
+if (
+    $fileSize === false ||
+    $fileSize <= 0 ||
+    $fileSize > 5 * 1024 * 1024
+) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Uploaded file is invalid.",
+        422
+    );
+}
+
+
+/* =========================================================
+   ENCRYPT ID NUMBER
+========================================================= */
+
+/*
+ * New IDs use the authenticated AES-256-GCM format configured for profile IDs.
+ * Existing values remain readable through bms_decrypt_profile_id().
+ */
+$encryptedId = bms_encrypt_profile_id($id_number);
+
+if ($encryptedId === false) {
+
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "ID encryption is not configured or failed.",
+        500
+    );
+}
+
+
+/* =========================================================
+   FINAL UPLOAD DIRECTORY
+========================================================= */
+
+$uploadDirectoryPath =
+    __DIR__ .
+    DIRECTORY_SEPARATOR .
+    "../uploads";
+
+
+if (
+    !is_dir($uploadDirectoryPath) &&
+    !mkdir(
+        $uploadDirectoryPath,
+        0755,
+        true
+    )
+) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Final upload storage is unavailable.",
+        500
+    );
+}
+
+
+$uploadDirectory =
+    realpath(
+        $uploadDirectoryPath
+    );
+
+
+if (
+    $uploadDirectory === false ||
+    !is_dir($uploadDirectory)
+) {
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "Final upload storage is unavailable.",
+        500
+    );
+}
+
+
+/* =========================================================
+   FINAL FILE NAME
+========================================================= */
+
+$finalFileName =
+    $fileName;
+
+
+$finalFilePath =
+    $uploadDirectory .
+    DIRECTORY_SEPARATOR .
+    $finalFileName;
+
+
+/*
+ * The randomized filename should normally never exist,
+ * but check anyway.
+ */
+if (file_exists($finalFilePath)) {
+
+    cleanupQuarantineFile();
+    cleanupRegistrationSession();
+
+    jsonResponse(
+        false,
+        "A file conflict occurred. Please try again.",
+        500
+    );
+}
+
+
+/* =========================================================
+   DATABASE TRANSACTION
+========================================================= */
+
+$conn->begin_transaction();
+
+$fileMoved = false;
+
+
+try {
 
     /* =====================================================
        MOVE CLEAN FILE FROM QUARANTINE TO FINAL STORAGE
     ===================================================== */
 
-    if (!rename($real_file_path, $final_file_path)) {
-
-        echo json_encode([
-            "success" => false,
-            "message" =>
-                "Failed to finalize registration proof file."
-        ]);
-
-        exit();
+    if (
+        !rename(
+            $realQuarantineFile,
+            $finalFilePath
+        )
+    ) {
+        throw new Exception(
+            "Unable to move uploaded file."
+        );
     }
 
 
-    /*
-     * From this point onward, the file is in permanent
-     * upload storage.
-     */
-    $real_file_path = $final_file_path;
+    $fileMoved = true;
+
+
+    /* =====================================================
+       INSERT RESIDENT
+    ===================================================== */
+
+    if ($account_type === 'resident') {
+
+        $stmt = $conn->prepare("
+            INSERT INTO residents
+            (
+                name,
+                username,
+                email,
+                contact_number,
+                password,
+                proof_file,
+                id_number,
+                satellite_id,
+                status
+            )
+            VALUES
+            (
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                'Pending'
+            )
+        ");
+
+
+        if (!$stmt) {
+            throw new Exception(
+                "Unable to prepare resident registration."
+            );
+        }
+
+
+        $stmt->bind_param(
+            "sssssssi",
+            $name,
+            $username,
+            $email,
+            $contact_number,
+            $passwordHash,
+            $finalFileName,
+            $encryptedId,
+            $satellite_id
+        );
+
+
+        if (!$stmt->execute()) {
+
+            $error =
+                $stmt->error;
+
+            $stmt->close();
+
+            throw new Exception(
+                $error
+            );
+        }
+
+
+        $stmt->close();
 
 
     /* =====================================================
        INSERT OFFICIAL
     ===================================================== */
 
-    $stmt = $conn->prepare("
-        INSERT INTO officials
-        (
-            name,
-            username,
-            email,
-            contact_number,
-            password,
-            department,
-            satellite_id,
-            proof_file,
-            id_number,
-            status
-        )
-        VALUES
-        (
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            'pending'
-        )
-    ");
+    } else {
+
+        $stmt = $conn->prepare("
+            INSERT INTO officials
+            (
+                name,
+                username,
+                email,
+                contact_number,
+                password,
+                department,
+                satellite_id,
+                proof_file,
+                id_number,
+                status
+            )
+            VALUES
+            (
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                'Pending'
+            )
+        ");
 
 
-    if (!$stmt) {
-
-        @unlink($real_file_path);
-
-        echo json_encode([
-            "success" => false,
-            "message" =>
-                "Unable to prepare registration."
-        ]);
-
-        exit();
-    }
+        if (!$stmt) {
+            throw new Exception(
+                "Unable to prepare official registration."
+            );
+        }
 
 
-    $stmt->bind_param(
-        "ssssssiss",
-        $name,
-        $username,
-        $email,
-        $contact_number,
-        $hashed_password,
-        $department,
-        $satellite_id,
-        $new_file_name,
-        $encrypted_id
-    );
+        $stmt->bind_param(
+            "ssssssiss",
+            $name,
+            $username,
+            $email,
+            $contact_number,
+            $passwordHash,
+            $department,
+            $satellite_id,
+            $finalFileName,
+            $encryptedId
+        );
 
 
-    if ($stmt->execute()) {
+        if (!$stmt->execute()) {
+
+            $error =
+                $stmt->error;
+
+            $stmt->close();
+
+            throw new Exception(
+                $error
+            );
+        }
+
 
         $stmt->close();
-
-        /*
-         * Registration completed.
-         */
-        session_unset();
-        session_destroy();
-
-
-        echo json_encode([
-            "success" => true
-        ]);
-
-        exit();
     }
 
 
-    $stmt->close();
+    /* =====================================================
+       COMMIT
+    ===================================================== */
+
+    if (!$conn->commit()) {
+        throw new Exception(
+            "Unable to complete registration."
+        );
+    }
+
+
+} catch (Throwable $e) {
+
+    /*
+     * Roll back database changes.
+     */
+    $conn->rollback();
 
 
     /*
-     * Database insertion failed.
-     * Remove finalized file.
+     * If the file was already moved to the final
+     * directory, delete it.
      */
-    if (is_file($real_file_path)) {
-        @unlink($real_file_path);
+    if (
+        $fileMoved &&
+        is_file($finalFilePath)
+    ) {
+        @unlink($finalFilePath);
     }
 
 
-    echo json_encode([
-        "success" => false,
-        "message" =>
-            "Could not complete registration."
-    ]);
+    /*
+     * If the file wasn't moved yet, remove the
+     * quarantine copy.
+     */
+    if (
+        !$fileMoved &&
+        is_file($realQuarantineFile)
+    ) {
+        @unlink($realQuarantineFile);
+    }
 
-    exit();
+
+    /*
+     * Do not expose database/internal errors
+     * to the user.
+     */
+    error_log(
+        "BMS registration error: " .
+        $e->getMessage()
+    );
+
+
+    cleanupRegistrationSession();
+
+
+    jsonResponse(
+        false,
+        "Unable to complete registration. Please try again later.",
+        500
+    );
 }
 
 
 /* =========================================================
-   20. FALLBACK
+   SUCCESS
 ========================================================= */
 
-if (is_file($real_file_path)) {
-    @unlink($real_file_path);
-}
+/*
+ * Registration is complete.
+ *
+ * Keep the normal session alive, but remove all
+ * temporary registration information.
+ */
+cleanupRegistrationSession();
 
 
-echo json_encode([
-    "success" => false,
-    "message" =>
-        "Could not complete registration."
-]);
+/*
+ * Regenerate the session ID after successful
+ * registration to reduce session-fixation risk.
+ *
+ * The CSRF token remains available.
+ */
+session_regenerate_id(true);
 
-exit();
+
+jsonResponse(
+    true,
+    "Registration successful. Your account is now pending approval."
+);
 
 ?>

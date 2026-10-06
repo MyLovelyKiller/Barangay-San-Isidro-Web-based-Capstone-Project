@@ -2,6 +2,9 @@
 require_once __DIR__ . '/../../BACKEND/security_helpers.php';
 bms_start_secure_session();
 bms_send_security_headers();
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
@@ -123,10 +126,13 @@ $stmt->close();
 
         <div class="nav-divider"></div>
 
-        <a href="/BMS/BACKEND/logout.php">
+        <form action="/BMS/BACKEND/logout.php" method="POST" class="logout-form">
+          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+          <button type="submit" class="logout-link">
             <i class="fa-solid fa-right-from-bracket"></i>
             <span>Log out</span>
-        </a>
+          </button>
+        </form>
 
       </nav>
 

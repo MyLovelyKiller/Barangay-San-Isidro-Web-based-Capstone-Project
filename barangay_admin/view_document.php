@@ -2,11 +2,7 @@
 session_start();
 include "config.php";
 
-/* Check if user is logged in */
-if (!isset($_SESSION['username'])) {
-    header("Location: /BMS/CODES/login.php");
-    exit();
-}
+bms_require_official_department($conn, 'ADMIN');
 
 /* Validate request ID */
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);

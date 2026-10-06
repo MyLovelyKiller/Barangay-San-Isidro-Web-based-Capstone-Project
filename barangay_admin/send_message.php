@@ -1,6 +1,6 @@
 <?php
 session_start();
-include 'config.php'; // Adjust path if needed
+require_once __DIR__ . '/../BACKEND/db_connect.php';
 
 /* ===== CSRF TOKEN ===== */
 if (!isset($_SESSION['csrf_token'])) {

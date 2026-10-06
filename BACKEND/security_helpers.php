@@ -34,6 +34,52 @@ function bms_send_security_headers(): void
     header('Permissions-Policy: geolocation=()');
 }
 
+function bms_require_official_department(mysqli $conn, string $department): void
+{
+    $officialId = filter_var($_SESSION['official_id'] ?? null, FILTER_VALIDATE_INT);
+    $sessionDepartment = strtoupper(trim((string)($_SESSION['department'] ?? '')));
+
+    if (
+        ($_SESSION['account_type'] ?? '') !== 'official' ||
+        $officialId === false ||
+        $officialId === null ||
+        $officialId < 1 ||
+        $sessionDepartment !== strtoupper($department)
+    ) {
+        http_response_code(403);
+        exit('Access denied.');
+    }
+
+    $stmt = $conn->prepare(
+        'SELECT department, status FROM officials WHERE official_id = ? LIMIT 1'
+    );
+    if (!$stmt) {
+        error_log('BMS official authorization query could not be prepared.');
+        http_response_code(500);
+        exit('Authorization could not be verified.');
+    }
+
+    $stmt->bind_param('i', $officialId);
+    if (!$stmt->execute()) {
+        $stmt->close();
+        error_log('BMS official authorization query failed.');
+        http_response_code(500);
+        exit('Authorization could not be verified.');
+    }
+
+    $official = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (
+        !$official ||
+        strtoupper(trim((string)$official['department'])) !== strtoupper($department) ||
+        $official['status'] !== 'Active'
+    ) {
+        http_response_code(403);
+        exit('Access denied.');
+    }
+}
+
 function bms_password_is_strong(string $password): bool
 {
     return strlen($password) >= 8

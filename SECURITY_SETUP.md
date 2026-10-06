@@ -12,6 +12,7 @@ Set these environment variables before using the corresponding features:
 | `BMS_DB_USER` | Restricted MySQL application user |
 | `BMS_DB_PASSWORD` | Main database password |
 | `BMS_DB_NAME` | Main database name |
+| `BMS_DB_PORT` | MySQL port; defaults to `3306` if unset |
 | `BMS_RESEND_API_KEY` | Resend API key; keep it in the deployment environment |
 | `BMS_RESEND_FROM_EMAIL` | Sender address verified with Resend |
 | `BMS_RESEND_FROM_NAME` | Sender display name |
@@ -46,13 +47,22 @@ For local Docker testing, the container defaults to port 80 internally. If testi
 
 ## Railway deployment
 
-1. Deploy the repository root as a Dockerfile service. Include the Dockerfile, entrypoint, PHP configuration, `.htaccess`, Railway config, and application changes in the pushed revision. Railway builds the pushed revision, not uncommitted local files. The configured `/health.php` check remains unhealthy until the database variables are correct and the database is reachable.
-2. Add a Railway MySQL service, provision the schema and required tables before directing traffic, then set `BMS_DB_HOST`, `BMS_DB_USER`, `BMS_DB_PASSWORD`, and `BMS_DB_NAME` on the web service. The BPSO module uses the same database and these same credentials; there is no separate `bpso_db`.
-3. Attach one Railway volume to the web service at `/data`. The app will not retain uploads or sessions across deployments without this volume. Back up the volume and database independently.
-4. Set all feature secrets from the table above in Railway's service variables. Set `BMS_APP_BASE_URL` to the public Railway origin without a path, and register the public domain with reCAPTCHA. If the chatbot is enabled, provide `CHATBOT/config.php` at runtime; it is intentionally excluded from the image.
-5. Generate a public domain and wait for the deployment health check to pass. Test login, registration/OTP, password reset, request attachments, profile-photo uploads, and downloads against the deployed service before opening it to users.
+1. Deploy the repository root as a Dockerfile service. Include the Dockerfile, entrypoint, PHP configuration, `.htaccess`, Railway config, `database/schema.sql`, and application changes in the pushed revision. Railway builds the pushed revision, not uncommitted local files. The configured `/health.php` check remains unhealthy until the database variables are correct and the database is reachable.
+2. Add a Railway MySQL service and provision the schema and required tables before directing traffic. Railway does not automatically expose one service's variables to another: in the web service's **Variables** tab, add `BMS_DB_HOST`, `BMS_DB_PORT`, `BMS_DB_USER`, `BMS_DB_PASSWORD`, and `BMS_DB_NAME`, referencing the MySQL service's `MYSQLHOST`, `MYSQLPORT`, `MYSQLUSER`, `MYSQLPASSWORD`, and `MYSQLDATABASE` variables respectively. Use Railway's variable-reference picker (the reference format is `${{MySQL.MYSQLHOST}}`, where `MySQL` is the exact name of your database service). The application also accepts those `MYSQL*` names directly if you add them as references on the web service. Keep the host private/internal for services in the same project. The BPSO module uses the same database and these same credentials; there is no separate `bpso_db`.
+3. Import `database/schema.sql` into the empty Railway database once. From Command Prompt on Windows, run this from the repository root, replacing the uppercase placeholders with the Railway MySQL service's **public TCP proxy** host/port and its database name/user:
 
-The SQL dump `barangay_db.sql` is intentionally excluded from Git and the image because it contains database contents. Do not make that dump public or import personal/sample account data into production. Prepare and review a schema-only migration plus sanitized production data, then import it into Railway MySQL through a protected connection before deployment. The current repository does not automatically create or migrate the application schema.
+   ```cmd
+   C:\xampp\mysql\bin\mysql.exe --host=PUBLIC_HOST --port=PUBLIC_PORT --user=MYSQL_USER --password MYSQL_DATABASE < database\schema.sql
+   ```
+
+   The client prompts for the MySQL password; do not put the password in the command. Enable or generate the MySQL service's TCP Proxy in Railway and use its public host and port for this import from your PC. Do not use the private host for a connection from your PC. Importing requires a database user with schema-creation privileges. This file creates the tables, indexes, and constraints without importing account or resident records. It is not idempotent: run it only once against an empty database.
+
+   For an existing database created from the earlier schema, back it up and apply `database/migrations/20261007_fix_request_and_blotter_ids.sql` during a maintenance window. The migration assigns unique auto-incrementing IDs to existing requests and blotter records and remaps their attachments; when legacy duplicate IDs caused attachments to be shared, those attachments are copied to each matching record. Test the migration against a restored backup before production.
+4. Attach one Railway volume to the web service at `/data`. The app will not retain uploads or sessions across deployments without this volume. Back up the volume and database independently.
+5. Set all feature secrets from the table above in Railway's service variables. Set `BMS_APP_BASE_URL` to the public Railway origin without a path, and register the public domain with reCAPTCHA. If the chatbot is enabled, provide `CHATBOT/config.php` at runtime; it is intentionally excluded from the image.
+6. Generate a public domain and wait for the deployment health check to pass. Test login, registration/OTP, password reset, request attachments, profile-photo uploads, and downloads against the deployed service before opening it to users.
+
+The local SQL dump `barangay_db.sql` is intentionally excluded from Git and the image because it contains account and other personal records. Do not publish or import that dump into production. `database/schema.sql` is a schema-only snapshot generated from it; it contains no table rows. A newly initialized database will therefore have no user accounts or lookup/reference rows, so create the first administrator and any required reference data through a reviewed, secure process before opening the app to users. The application does not automatically create or migrate its schema.
 
 ## Required actions outside the source tree
 

@@ -133,10 +133,13 @@ $stmt->close();
 
         <div class="nav-divider"></div>
 
-        <a href="/BMS/BACKEND/logout.php">
+        <form action="/BMS/BACKEND/logout.php" method="POST" class="logout-form">
+          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
+          <button type="submit" class="logout-link">
             <i class="fa-solid fa-right-from-bracket"></i>
             <span>Log out</span>
-        </a>
+          </button>
+        </form>
 
       </nav>
 

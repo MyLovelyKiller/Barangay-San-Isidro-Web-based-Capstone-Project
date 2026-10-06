@@ -1,4 +1,3 @@
-```php
 <?php
 session_start();
 
@@ -69,4 +68,3 @@ header("Expires: 0");
 header("Location: /BMS/index.php?logout=success");
 exit();
 ?>
-```

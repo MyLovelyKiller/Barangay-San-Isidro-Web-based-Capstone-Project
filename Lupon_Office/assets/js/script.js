@@ -64,13 +64,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function confirmLogout(event) {
     event.preventDefault();
-    var href = event.currentTarget.href;
+    var form = event.currentTarget;
 
     showConfirmModal('Are you sure you want to log out of the Lupon Office?', {
         title: 'Log Out',
         confirmText: 'Log Out'
     }).then(function (confirmed) {
-        if (confirmed) window.location.href = href;
+        if (confirmed) form.submit();
     });
 
     return false;

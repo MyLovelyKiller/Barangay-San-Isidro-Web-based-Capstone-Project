@@ -2,6 +2,10 @@
 session_start();
 include "../../BACKEND/db_connect.php";
 
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 if (!isset($_SESSION['resident_id']) && !isset($_SESSION['username'])) {
     header("Location: /BMS/CODES/login.php");
     exit();
@@ -68,7 +72,10 @@ if ($userResult && $userResult->num_rows == 1) {
                 <a href="Request.php"><i class="fa-solid fa-file-circle-plus"></i><span>Request a Document</span></a>
                 <a href="History.php"><i class="fa-solid fa-clock-rotate-left"></i><span>History</span></a>
                 <div class="nav-divider"></div> 
-                <a href="/BMS/BACKEND/logout.php"><i class="fa-solid fa-right-from-bracket"></i><span>Log out</span></a>
+                <form action="/BMS/BACKEND/logout.php" method="POST" class="logout-form">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    <button type="submit" class="logout-link"><i class="fa-solid fa-right-from-bracket"></i><span>Log out</span></button>
+                </form>
             </nav>
         </div>
     </aside>
@@ -79,6 +86,7 @@ if ($userResult && $userResult->num_rows == 1) {
 
             <div class="profilecard">
                 <form class="profileform" action="../Backend/update_profile.php" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
                     
                     <div class="profilepicsection">
                         <div class="avatar-wrapper">

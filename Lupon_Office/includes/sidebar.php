@@ -1,3 +1,8 @@
+<?php
+if (session_status() === PHP_SESSION_ACTIVE && empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+?>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 <link rel="stylesheet" href="/BMS/Lupon_Office/assets/css/sidebar.css">
@@ -31,9 +36,12 @@
                 <i class="fa fa-clock-rotate-left"></i> <span> Audit Trail</span>
             </a>
 
-            <a href="/BMS/BACKEND/logout.php" onclick="return confirmLogout(event)">
-                <i class="fa fa-sign-out-alt"></i> <span> Log out</span>
-            </a>
+            <form action="/BMS/BACKEND/logout.php" method="POST" class="logout-form" onsubmit="return confirmLogout(event)">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                <button type="submit" class="logout-link">
+                    <i class="fa fa-sign-out-alt"></i> <span> Log out</span>
+                </button>
+            </form>
         </nav>
     </div>
 </aside>

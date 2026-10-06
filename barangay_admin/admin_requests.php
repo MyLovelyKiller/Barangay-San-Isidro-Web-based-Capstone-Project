@@ -1,7 +1,11 @@
 <?php
 session_start();
 include 'config.php';
+
 include 'session_time-out.php';
+
+bms_require_official_department($conn, 'ADMIN');
+
 date_default_timezone_set('Asia/Manila');
 
 /* ===== CSRF TOKEN ===== */

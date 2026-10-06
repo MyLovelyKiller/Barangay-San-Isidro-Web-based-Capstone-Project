@@ -1,3 +1,4 @@
+```php
 <?php
 session_start();
 require_once 'config.php';
@@ -9,6 +10,7 @@ if ($official_id <= 0) {
     die("Unauthorized access.");
 }
 
+/* GET BPSO ACCOUNT */
 $stmt = $conn->prepare("
     SELECT department, satellite_id
     FROM officials
@@ -16,22 +18,31 @@ $stmt = $conn->prepare("
     LIMIT 1
 ");
 
+if (!$stmt) {
+    die("Unable to verify account.");
+}
+
 $stmt->bind_param("i", $official_id);
 $stmt->execute();
 
 $official = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
-if (!$official || strtoupper(trim($official['department'])) !== 'BPSO') {
+if (
+    !$official ||
+    strtoupper(trim($official['department'] ?? '')) !== 'BPSO'
+) {
     die("Unauthorized access.");
 }
 
-$satellite_id = (int)$official['satellite_id'];
+/* GET ASSIGNED SATELLITE */
+$satellite_id = (int)($official['satellite_id'] ?? 0);
 
 if ($satellite_id <= 0) {
     die("Your account is not assigned to a satellite.");
 }
 
+/* VERIFY SATELLITE EXISTS */
 $stmt = $conn->prepare("
     SELECT satellite_name
     FROM satellites
@@ -39,17 +50,28 @@ $stmt = $conn->prepare("
     LIMIT 1
 ");
 
+if (!$stmt) {
+    die("Unable to verify satellite.");
+}
+
 $stmt->bind_param("i", $satellite_id);
 $stmt->execute();
 
 $satellite = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
+if (!$satellite) {
+    die("Assigned satellite was not found.");
+}
+
 $satellite_name = $satellite['satellite_name'] ?? 'Unknown Satellite';
 
 
-function getCount($conn, $table, $satellite_id) {
-
+/* =========================
+   GET COUNT
+========================= */
+function getCount($conn, $table, $satellite_id)
+{
     $allowed_tables = [
         'blotter',
         'vehicle_logs',
@@ -57,6 +79,10 @@ function getCount($conn, $table, $satellite_id) {
         'residents'
     ];
 
+    /*
+     * Table names cannot be bound using prepared
+     * statement placeholders, so use an allowlist.
+     */
     if (!in_array($table, $allowed_tables, true)) {
         return 0;
     }
@@ -72,7 +98,11 @@ function getCount($conn, $table, $satellite_id) {
     }
 
     $stmt->bind_param("i", $satellite_id);
-    $stmt->execute();
+
+    if (!$stmt->execute()) {
+        $stmt->close();
+        return 0;
+    }
 
     $result = $stmt->get_result();
     $row = $result->fetch_assoc();
@@ -82,14 +112,46 @@ function getCount($conn, $table, $satellite_id) {
     return (int)($row['total'] ?? 0);
 }
 
-$blotterCount = getCount($conn, 'blotter', $satellite_id);
-$vehicleCount = getCount($conn, 'vehicle_logs', $satellite_id);
-$borrowingCount = getCount($conn, 'borrowing', $satellite_id);
+
+/* =========================
+   DASHBOARD COUNTS
+========================= */
+$blotterCount = getCount(
+    $conn,
+    'blotter',
+    $satellite_id
+);
+
+$vehicleCount = getCount(
+    $conn,
+    'vehicle_logs',
+    $satellite_id
+);
+
+$borrowingCount = getCount(
+    $conn,
+    'borrowing',
+    $satellite_id
+);
 
 
-function getRecentActivities($conn, $satellite_id, $limit = 5) {
-
+/* =========================
+   RECENT ACTIVITIES
+========================= */
+function getRecentActivities($conn, $satellite_id, $limit = 5)
+{
     $limit = (int)$limit;
+
+    if ($limit <= 0) {
+        $limit = 5;
+    }
+
+    /*
+     * Keep the limit within a reasonable range.
+     */
+    if ($limit > 50) {
+        $limit = 50;
+    }
 
     $query = "
         SELECT
@@ -138,9 +200,18 @@ function getRecentActivities($conn, $satellite_id, $limit = 5) {
         $limit
     );
 
-    $stmt->execute();
+    if (!$stmt->execute()) {
+        $stmt->close();
+        return false;
+    }
 
-    return $stmt->get_result();
+    $result = $stmt->get_result();
+
+    /*
+     * Do not close the statement here because the
+     * returned result is still being used by the page.
+     */
+    return $result;
 }
 
 $recentActivities = getRecentActivities(
@@ -148,6 +219,7 @@ $recentActivities = getRecentActivities(
     $satellite_id,
     5
 );
+
 ?>
 
 <!doctype html>
@@ -160,9 +232,15 @@ $recentActivities = getRecentActivities(
 
 <title>BPSO Dashboard</title>
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+>
 
 <link rel="stylesheet" href="main.css">
 <link rel="stylesheet" href="sidebar.css">
@@ -182,7 +260,11 @@ $recentActivities = getRecentActivities(
 
 <div class="d-flex align-items-center mb-4 p-4 bg-white shadow-sm rounded-4 border-bottom border-primary border-3">
 
-<img src="/BMS/IMAGES/silogo.png" style="width:70px;height:70px;object-fit:contain;">
+<img
+    src="/BMS/IMAGES/silogo.png"
+    alt="Barangay San Isidro Logo"
+    style="width:70px;height:70px;object-fit:contain;"
+>
 
 <div class="ms-3">
 
@@ -195,40 +277,59 @@ BPSO Management System Dashboard
 </p>
 
 </div>
+
 </div>
+
 
 <!-- SYSTEM OVERVIEW -->
 
-<h4 class="mb-3 fw-bold">System Overview</h4>
+<h4 class="mb-3 fw-bold">
+System Overview
+</h4>
 
 <div class="row g-4 mb-5">
 
 <?php
 
-$overview=[
+$overview = [
 
-['name'=>'BLOTTER CASES','table'=>'blotter','color'=>'#198754'],
+    [
+        'name' => 'BLOTTER CASES',
+        'count' => $blotterCount,
+        'color' => '#198754'
+    ],
 
-['name'=>'VEHICLE LOGS','table'=>'vehicle_logs','color'=>'#0dcaf0'],
+    [
+        'name' => 'VEHICLE LOGS',
+        'count' => $vehicleCount,
+        'color' => '#0dcaf0'
+    ],
 
-['name'=>'BORROWED ITEMS','table'=>'borrowing','color'=>'#ffc107']
+    [
+        'name' => 'BORROWED ITEMS',
+        'count' => $borrowingCount,
+        'color' => '#ffc107'
+    ]
 
 ];
 
-foreach($overview as $o){
+foreach ($overview as $o) {
 
 ?>
 
 <div class="col-md-4">
 
-<div class="card p-3 stat-card" style="border-left:5px solid <?php echo $o['color']; ?>">
+<div
+    class="card p-3 stat-card"
+    style="border-left:5px solid <?= htmlspecialchars($o['color'], ENT_QUOTES, 'UTF-8'); ?>"
+>
 
 <small class="text-muted fw-bold">
-<?php echo $o['name']; ?>
+<?= htmlspecialchars($o['name'], ENT_QUOTES, 'UTF-8'); ?>
 </small>
 
 <h3 class="fw-bold mt-2">
-<?php echo getCount($conn, $o['table'], $satellite_id); ?>
+<?= (int)$o['count']; ?>
 </h3>
 
 </div>
@@ -239,25 +340,43 @@ foreach($overview as $o){
 
 </div>
 
+
 <!-- MANAGEMENT MODULES -->
 
-<h4 class="mb-3 fw-bold">Management Modules</h4>
+<h4 class="mb-3 fw-bold">
+Management Modules
+</h4>
 
 <div class="row g-3 mb-5">
 
 <?php
 
-$modules=[
+$modules = [
 
-['name'=>'Blotter','link'=>'blotter.php','color'=>'btn-success','icon'=>'📖'],
+    [
+        'name' => 'Blotter',
+        'link' => 'blotter.php',
+        'color' => 'btn-success',
+        'icon' => '📖'
+    ],
 
-['name'=>'Vehicle Logs','link'=>'vehicle_logs.php','color'=>'btn-info','icon'=>'🚗'],
+    [
+        'name' => 'Vehicle Logs',
+        'link' => 'vehicle_logs.php',
+        'color' => 'btn-info',
+        'icon' => '🚗'
+    ],
 
-['name'=>'Borrowing','link'=>'borrowing.php','color'=>'btn-warning','icon'=>'📦']
+    [
+        'name' => 'Borrowing',
+        'link' => 'borrowing.php',
+        'color' => 'btn-warning',
+        'icon' => '📦'
+    ]
 
 ];
 
-foreach($modules as $m){
+foreach ($modules as $m) {
 
 ?>
 
@@ -269,14 +388,15 @@ foreach($modules as $m){
 
 <span class="fw-bold">
 
-<?php echo $m['icon']." ".$m['name']; ?>
+<?= htmlspecialchars($m['icon'] . ' ' . $m['name'], ENT_QUOTES, 'UTF-8'); ?>
 
 </span>
 
-<a href="<?php echo $m['link']; ?>" class="btn btn-sm text-white <?php echo $m['color']; ?>">
-
-+ New
-
+<a
+    href="<?= htmlspecialchars($m['link'], ENT_QUOTES, 'UTF-8'); ?>"
+    class="btn btn-sm text-white <?= htmlspecialchars($m['color'], ENT_QUOTES, 'UTF-8'); ?>"
+>
+    + New
 </a>
 
 </div>
@@ -289,9 +409,12 @@ foreach($modules as $m){
 
 </div>
 
+
 <!-- RECENT ACTIVITIES -->
 
-<h4 class="mb-3 fw-bold">Recent Activities</h4>
+<h4 class="mb-3 fw-bold">
+Recent Activities
+</h4>
 
 <div class="table-container">
 
@@ -313,33 +436,75 @@ foreach($modules as $m){
 
 <?php
 
-$activities=getRecentActivities($conn, $satellite_id);
+if ($recentActivities && $recentActivities->num_rows > 0) {
 
-if($activities && mysqli_num_rows($activities)>0){
+    while ($row = $recentActivities->fetch_assoc()) {
 
-while($row=mysqli_fetch_assoc($activities)){
+        $status = strtolower(
+            trim($row['status'] ?? '')
+        );
 
-$status=strtolower($row['status']);
+        $badge = "bg-secondary";
 
-$badge="bg-secondary";
+        if (
+            in_array(
+                $status,
+                ['resolved', 'returned', 'completed'],
+                true
+            )
+        ) {
+            $badge = "bg-success";
+        }
 
-if(in_array($status,['resolved','returned','completed'])){
+        if (
+            in_array(
+                $status,
+                ['pending', 'ongoing', 'borrowed'],
+                true
+            )
+        ) {
+            $badge = "bg-warning text-dark";
+        }
 
-$badge="bg-success";
+        if (
+            in_array(
+                $status,
+                ['cancelled', 'overdue', 'rejected'],
+                true
+            )
+        ) {
+            $badge = "bg-danger";
+        }
 
-}
+        $description = htmlspecialchars(
+            $row['description'] ?? '',
+            ENT_QUOTES,
+            'UTF-8'
+        );
 
-if(in_array($status,['pending','ongoing','borrowed'])){
+        $module = htmlspecialchars(
+            $row['module'] ?? '',
+            ENT_QUOTES,
+            'UTF-8'
+        );
 
-$badge="bg-warning text-dark";
+        $displayStatus = htmlspecialchars(
+            ucfirst($row['status'] ?? ''),
+            ENT_QUOTES,
+            'UTF-8'
+        );
 
-}
+        $recordedDate = '';
 
-if(in_array($status,['cancelled','overdue'])){
-
-$badge="bg-danger";
-
-}
+        if (
+            !empty($row['date_recorded']) &&
+            strtotime($row['date_recorded']) !== false
+        ) {
+            $recordedDate = date(
+                "M d, Y",
+                strtotime($row['date_recorded'])
+            );
+        }
 
 ?>
 
@@ -347,17 +512,19 @@ $badge="bg-danger";
 
 <td>
 
-<strong><?php echo $row['module']; ?>:</strong>
+<strong>
+<?= $module; ?>:
+</strong>
 
-<?php echo htmlspecialchars($row['description']); ?>
+<?= $description; ?>
 
 </td>
 
 <td>
 
-<span class="badge <?php echo $badge; ?>">
+<span class="badge <?= htmlspecialchars($badge, ENT_QUOTES, 'UTF-8'); ?>">
 
-<?php echo ucfirst($row['status']); ?>
+<?= $displayStatus; ?>
 
 </span>
 
@@ -365,7 +532,7 @@ $badge="bg-danger";
 
 <td>
 
-<?php echo date("M d, Y",strtotime($row['date_recorded'])); ?>
+<?= htmlspecialchars($recordedDate, ENT_QUOTES, 'UTF-8'); ?>
 
 </td>
 
@@ -373,9 +540,9 @@ $badge="bg-danger";
 
 <?php
 
-}
+    }
 
-}else{
+} else {
 
 ?>
 
@@ -404,8 +571,6 @@ No recent activities found.
 </div>
 
 </div>
-
-
 
 </body>
 </html>
