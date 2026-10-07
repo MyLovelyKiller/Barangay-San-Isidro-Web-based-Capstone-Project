@@ -380,6 +380,11 @@ function bms_scan_file_with_clamav(string $filePath, ?string &$message = null): 
     }
 
     $message = $exitCode === 1 ? 'File was detected as infected.' : 'File security scan failed.';
-    error_log('BMS ClamAV scan failed with exit code ' . $exitCode . '.');
+    $diagnostic = substr(implode(' | ', $output), 0, 1000);
+    error_log(
+        'BMS ClamAV scan failed with exit code '
+        . $exitCode
+        . ($diagnostic !== '' ? ': ' . $diagnostic : '.')
+    );
     return false;
 }

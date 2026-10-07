@@ -5,9 +5,10 @@
 ========================================================= */
 
 ob_start();
-session_start();
+require_once __DIR__ . '/security_helpers.php';
+bms_start_secure_session();
 
-include "db_connect.php";
+require __DIR__ . '/db_connect.php';
 
 ob_clean();
 
