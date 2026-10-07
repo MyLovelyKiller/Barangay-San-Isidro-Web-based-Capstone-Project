@@ -10,15 +10,9 @@
  */
 
 return [
-    'project_id' => 'barangay-captcha',
-
-    /*
-     * Paste your NEW API key between the quotes below.
-     *
-     * DO NOT send this value to ChatGPT.
-     */
-    
-
+    'project_id' => getenv('BMS_RECAPTCHA_PROJECT_ID') ?: '',
+    'api_key' => getenv('BMS_RECAPTCHA_API_KEY') ?: '',
+    'site_key' => '6LeDTbosAAAAAEKRg2OKrhBv620cRvwTPw8Fbsv4',
     /*
      * This must match the action used by your login page.
      */
