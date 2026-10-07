@@ -350,7 +350,7 @@ $csrf_token = $_SESSION['csrf_token'];
                             autocomplete="username"
                             minlength="4"
                             maxlength="50"
-                            pattern="[A-Za-z0-9_.-]+"
+                            pattern="[A-Za-z0-9_.\-]+"
                             required
                         >
 
