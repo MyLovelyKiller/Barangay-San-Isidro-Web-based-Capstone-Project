@@ -914,59 +914,15 @@ if (
    CLAMAV
 ========================================================= */
 
-$clamScanPath =
-    'C:\Users\Gary\Downloads\clamav-1.5.4.win.x64\clamav-1.5.4.win.x64\clamscan.exe';
-
-
-if (
-    !is_file($clamScanPath) ||
-    !function_exists('exec')
-) {
-
+$scanMessage = null;
+if (!bms_scan_file_with_clamav($quarantinePath, $scanMessage)) {
     @unlink($quarantinePath);
 
+    $infected = $scanMessage === 'File was detected as infected.';
     jsonResponse(
         false,
-        "File security scanner is unavailable.",
-        503
-    );
-}
-
-
-$output = [];
-
-$exitCode = -1;
-
-$command =
-    escapeshellarg($clamScanPath) .
-    ' --no-summary ' .
-    escapeshellarg($quarantinePath);
-
-
-exec(
-    $command,
-    $output,
-    $exitCode
-);
-
-
-if ($exitCode !== 0) {
-
-    @unlink($quarantinePath);
-
-    if ($exitCode === 1) {
-
-        jsonResponse(
-            false,
-            "Uploaded file was detected as infected.",
-            422
-        );
-    }
-
-    jsonResponse(
-        false,
-        "File security scan failed.",
-        503
+        $infected ? "Uploaded file was detected as infected." : ($scanMessage ?? "File security scan failed."),
+        $infected ? 422 : 503
     );
 }
 
