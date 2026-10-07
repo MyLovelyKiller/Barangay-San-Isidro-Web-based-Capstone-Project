@@ -1070,142 +1070,22 @@ $_SESSION['registration_otp_max_attempts'] =
 
 
 /* =========================================================
-   LOAD MAIL CONFIGURATION
+   SEND OTP WITH RESEND
 ========================================================= */
 
-$mailConfigFile =
-    __DIR__ .
-    DIRECTORY_SEPARATOR .
-    "mail_config.php";
-
-
-if (!is_file($mailConfigFile)) {
-
-    @unlink($quarantinePath);
-
-    unset(
-        $_SESSION['temp_user_data'],
-        $_SESSION['temp_file_name'],
-        $_SESSION['temp_file_path'],
-        $_SESSION['otp'],
-        $_SESSION['registration_security_verified'],
-        $_SESSION['registration_otp_expires'],
-        $_SESSION['registration_otp_attempts'],
-        $_SESSION['registration_otp_max_attempts']
-    );
-
-    jsonResponse(
-        false,
-        "Email service is unavailable.",
-        500
-    );
-}
-
-
-$mailConfig =
-    require $mailConfigFile;
-
-
-/* =========================================================
-   PHPMailer
-========================================================= */
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
-require __DIR__ . '/../PHPMailer/src/Exception.php';
-require __DIR__ . '/../PHPMailer/src/PHPMailer.php';
-require __DIR__ . '/../PHPMailer/src/SMTP.php';
-
-
-$mail = new PHPMailer(true);
-
+$safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
+$safeOtp = htmlspecialchars($otp, ENT_QUOTES, 'UTF-8');
+$emailHtml =
+    "Hello <b>{$safeName}</b>,<br><br>" .
+    "Your verification code for Barangay San Isidro is:<br>" .
+    "<h2>{$safeOtp}</h2>" .
+    "<p>This code will expire in 10 minutes.</p>" .
+    "<p>Please do not share this code.</p>";
 
 try {
-
-    $mail->isSMTP();
-
-    $mail->SMTPDebug = 0;
-
-    $mail->Host =
-        $mailConfig['host'];
-
-    $mail->SMTPAuth = true;
-
-    $mail->Username =
-        $mailConfig['username'];
-
-    $mail->Password =
-        $mailConfig['password'];
-
-    $mail->SMTPSecure =
-        PHPMailer::ENCRYPTION_STARTTLS;
-
-    $mail->Port =
-        (int)$mailConfig['port'];
-
-
-    $mail->SMTPOptions = [
-        'ssl' => [
-            'verify_peer' => true,
-            'verify_peer_name' => true,
-            'allow_self_signed' => false
-        ]
-    ];
-
-
-    $mail->setFrom(
-        $mailConfig['from_email'],
-        $mailConfig['from_name']
-    );
-
-
-    $mail->addAddress(
-        $email,
-        $name
-    );
-
-
-    $mail->isHTML(true);
-
-    $mail->Subject =
-        'Verify Your Registration';
-
-
-    $safeName =
-        htmlspecialchars(
-            $name,
-            ENT_QUOTES,
-            'UTF-8'
-        );
-
-
-    $safeOtp =
-        htmlspecialchars(
-            $otp,
-            ENT_QUOTES,
-            'UTF-8'
-        );
-
-
-    $mail->Body =
-        "Hello <b>{$safeName}</b>,<br><br>" .
-        "Your verification code for Barangay San Isidro is:<br>" .
-        "<h2>{$safeOtp}</h2>" .
-        "<p>This code will expire in 10 minutes.</p>" .
-        "<p>Please do not share this code.</p>";
-
-
-    $mail->send();
-
-
-    jsonResponse(
-        true,
-        "OTP sent successfully."
-    );
-
-
-} catch (Exception $e) {
+    bms_send_email($email, 'Verify Your Registration', $emailHtml);
+    jsonResponse(true, "OTP sent successfully.");
+} catch (RuntimeException $exception) {
 
     /*
      * Delete the clean quarantine file if email
@@ -1234,5 +1114,3 @@ try {
         503
     );
 }
-?>
-```

@@ -5,3 +5,5 @@ CHATBOT/config.php
 /node_modules/
 .env
 .env.*
+!.env.example
+bms-backup.sql
