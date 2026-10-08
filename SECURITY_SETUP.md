@@ -41,7 +41,7 @@ Build the image from this directory with `docker build -t bms .`. The image incl
 
 The Docker build context excludes `.env` files, `CHATBOT/config.php`, the SQL dump, logs, and uploaded files. Supply `CHATBOT/config.php` as a read-only runtime mount if the chatbot is enabled. The container accepts Railway's `PORT` variable and redirects the old `/BMS/...` links to the application root, preserving local XAMPP URLs.
 
-The container uses one writable data directory at `/data`. It stores `uploads/`, resident uploads, quarantined files, uploaded profile photos, and PHP sessions there. Mount a Railway volume at `/data`; the entrypoint prepares Apache-writable directories and links the application's existing paths into the volume. Do not mount over `/var/www/html`.
+The container uses one writable data directory at `/data`. It stores `uploads/`, resident uploads, quarantined files, uploaded profile photos, and PHP sessions there. Mount a Railway volume at `/data`; the entrypoint prepares Apache-writable directories and links the application's existing paths into the volume. Do not mount over `/var/www/html`. ClamAV scans are serialized within each container so concurrent uploads do not each load a separate scanner process. The service still needs enough memory for one ClamAV scan alongside Apache and PHP; monitor Railway memory usage and increase the service's memory allocation if scan logs report exit code 137 (`Killed`).
 
 For local Docker testing, the container defaults to port 80 internally. If testing session-based flows over plain HTTP, set `BMS_SESSION_COOKIE_SECURE=0`; production Railway should leave this unset (secure cookies default to `1`).
 

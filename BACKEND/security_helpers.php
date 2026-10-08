@@ -370,9 +370,26 @@ function bms_scan_file_with_clamav(string $filePath, ?string &$message = null): 
     $command = escapeshellarg($scanner)
         . ' --no-summary --max-filesize=20M --max-scansize=100M '
         . escapeshellarg($filePath) . ' 2>&1';
+
+    $lockPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'bms-clamav-scan.lock';
+    $lockHandle = fopen($lockPath, 'c');
+    if ($lockHandle === false || !flock($lockHandle, LOCK_EX)) {
+        if (is_resource($lockHandle)) {
+            fclose($lockHandle);
+        }
+        $message = 'File security scan could not be started.';
+        error_log('BMS ClamAV scan lock could not be acquired.');
+        return false;
+    }
+
     $output = [];
     $exitCode = -1;
-    exec($command, $output, $exitCode);
+    try {
+        exec($command, $output, $exitCode);
+    } finally {
+        flock($lockHandle, LOCK_UN);
+        fclose($lockHandle);
+    }
 
     if ($exitCode === 0) {
         $message = 'Clean';
